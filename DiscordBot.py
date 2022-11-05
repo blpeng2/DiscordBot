@@ -62,4 +62,4 @@ async def _title(interaction: discord.Interaction, username: str, title_name: st
         await interaction.response.send_message("칭호를 추가했습니다.", ephemeral=True)
 
 
-bot.run("OTE1MjA4NzMyMjM1OTU2Mjc2.GXEBVZ.48_F3LDywARuCJy9xc_4dcO_Kiz3qmwZ0nzc9E")
+bot.run("Token")
