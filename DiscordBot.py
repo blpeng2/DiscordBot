@@ -83,7 +83,7 @@ tree = app_commands.CommandTree(bot)
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
 async def _self(interaction: discord.Interaction):
-    Status.refreshRanking()
+
     await interaction.response.send_message("complete")
 
 
