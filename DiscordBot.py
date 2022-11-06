@@ -1,12 +1,15 @@
 import discord
 from pymongo import MongoClient
 from discord import app_commands
+import youtube_dl
+from collections import deque
 
 
 class Bot(discord.Client):
     def __init__(self):
         super().__init__(intents=discord.Intents.all())
         self.synced = False
+        self.music = Music()
 
     async def on_ready(self):
         await self.wait_until_ready()
@@ -14,6 +17,56 @@ class Bot(discord.Client):
             await tree.sync(guild=discord.Object(id=1038138701961769021))
             self.synced = True
         print(f"we have logged in as {self.user}.")
+
+
+class Music():
+    def __init__(self) -> None:
+        self.__vc = None
+        self.playlist = deque()
+        self.is_playing = False
+
+    async def add(self, url):
+        YDL_OPTIONS = {
+            'format': 'bestaudio/best',
+            'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
+            'restrictfilenames': True,
+            'nocheckcertificate': True,
+            'ignoreerrors': False,
+            'logtostderr': False,
+            'quiet': True,
+            'extract_flat': True,
+            'skip_download': True,
+            'default_search': 'auto',
+            'source_address': '0.0.0.0',  # ipv6 addresses cause issues sometimes
+            'force-ipv4': True,
+            'cachedir': False
+        }
+        FFMPEG_OPTIONS = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+        with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(url, download=False)
+            url = info['formats'][0]['url']
+            self.playlist.append(
+                await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS))
+
+    async def connect(self):
+        voiceChannel = bot.get_channel(1038138702670614551)
+        if self.__vc is None:
+            self.__vc: discord.VoiceClient = await voiceChannel.connect()
+
+    def play(self):
+        if self.__vc.is_paused():
+            self.__vc.resume()
+        elif self.playlist:
+            self.__vc.play(self.playlist[0],
+                           after=lambda e: self.play())
+            self.playlist.popleft()
+
+    def pause(self):
+        self.__vc.pause()
+
+    def stop(self):
+        self.__vc.stop()
 
 
 class Status():
@@ -83,7 +136,6 @@ tree = app_commands.CommandTree(bot)
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
 async def _self(interaction: discord.Interaction):
-
     await interaction.response.send_message("complete")
 
 
@@ -92,7 +144,47 @@ async def _create(interaction: discord.Interaction, name: str):
     await interaction.response.send_message(f"I am working! {name}", ephemeral=True)
 
 
+@tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
+async def __add(interaction: discord.Interaction, url: str):
+    await bot.music.add(url)
+    await interaction.response.send_message("추가 되었습니다.")
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="재생", description="노래를 재생합니다.")
+async def _music(interaction: discord.Interaction):
+    await interaction.response.defer()
+    await bot.music.connect()
+    bot.music.play()
+    await interaction.followup.send("재생")
+
+
+# FIXME 정상작동 X
+@tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
+async def _remove(interaction: discord.Interaction, num: str):
+    bot.music.playlist.remove(bot.music.playlist[int(num)])
+    await interaction.response.send_message("삭제 되었습니다.")
+
+
+# FIXME 정상작동 X
+@tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
+async def _playlist(interaction: discord.Interaction):
+    await interaction.response.send_message(bot.music.playlist)
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="일시정지", description="노래를 일시정지합니다.")
+async def _pause(interaction: discord.Interaction):
+    bot.music.pause()
+    await interaction.response.send_message("일시정지")
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="스킵", description="노래를 스킵합니다.")
+async def _stop(interaction: discord.Interaction):
+    bot.music.stop()
+    await interaction.response.send_message("스킵")
+
 # 매개변수를 lowercase로 작성하지 않으면 error 발생
+
+
 @tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다")
 async def _title(interaction: discord.Interaction, username: str, title_name: str):
     role = discord.utils.find(
