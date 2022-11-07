@@ -4,6 +4,10 @@ from discord import app_commands
 import youtube_dl
 from collections import deque
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Bot(discord.Client):
@@ -19,23 +23,37 @@ class Bot(discord.Client):
             self.synced = True
         print(f"we have logged in as {self.user}.")
 
+    async def on_message(self, msg: discord.Message):
+        if msg.author == bot.user:
+            return
+        if ChatManager.checkAbuse(msg.content):
+            await msg.channel.purge(limit=1)
+            await msg.channel.send("욕설 금지")
+            return
+        Status.addExp(msg.author.name, 10)
+
 
 class ChatManager():
+    def checkMacro(self):
+        pass
+
     @classmethod
     def checkGrammer(self, msg):
         return spell_checker.check(msg)
 
     @classmethod
     def checkAbuse(self, msg: str):
-        API_URL = "https://api-inference.huggingface.co/models/jason9693/SoongsilBERT-base-beep"
+        API_URL = os.getenv("NLP")
         headers = {
-            "Authorization": "Token"}
+            "Authorization": os.getenv("MACHINE")}
         payload = {
             "inputs": f"{msg}",
+            "options": {
+                "wait_for_model": True
+            }
         }
         response = requests.post(API_URL, headers=headers, json=payload).json()
-
-        if response[0][0]["score"] >= 0.4 and response[0][1]["score"] >= 0.3:
+        if response[0][0]["label"] == "hate":
             return True
         else:
             False
@@ -98,7 +116,7 @@ class Status():
     @classmethod
     def getStatus(self, username: str) -> dict:
         client = MongoClient(
-            "URL")
+            os.getenv("MONGO"))
 
         db = client["Discord"]["User"]
         # TODO 아무도 찾지 못했을 경우 예외처리가 필요
@@ -108,7 +126,7 @@ class Status():
     @classmethod
     def createStatus(self, post: dict):
         client = MongoClient(
-            "URL")
+            os.getenv("MONGO"))
 
         db = client["Discord"]["User"]
         # TODO 저장이 되었는지 확인하는 코드가 필요
@@ -118,7 +136,7 @@ class Status():
     @classmethod
     def refreshRanking(self):
         client = MongoClient(
-            "URL")
+            os.getenv("MONGO"))
 
         db = client["Discord"]["User"]
         users = []
@@ -138,6 +156,15 @@ class Status():
             db.replace_one({"userName": user["userName"]}, user)
         return True
 
+    @classmethod
+    def addExp(self, userName, exp: int):
+        client = MongoClient(
+            os.getenv("MONGO"))
+        db = client["Discord"]["User"]
+        user = db.find_one({"userName": userName})
+        user["exp"] += exp
+        db.replace_one({"userName": user["userName"]}, user)
+
 
 class Title():
     def __init__(self) -> None:
@@ -154,18 +181,6 @@ class Title():
 
 bot = Bot()
 tree = app_commands.CommandTree(bot)
-
-chatdata = {}
-count = {}
-
-
-@bot.event
-async def on_message(msg: discord.Message):
-    if msg.author == bot.user:
-        return
-    if ChatManager.checkAbuse(msg.content):
-        await msg.channel.purge(limit=1)
-        await msg.channel.send("욕설 금지")
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="checkGrammer")
@@ -188,7 +203,7 @@ async def _create(interaction: discord.Interaction, name: str):
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
-async def __add(interaction: discord.Interaction, url: str):
+async def _add(interaction: discord.Interaction, url: str):
     await bot.music.add(url)
     await interaction.response.send_message("추가 되었습니다.")
 
@@ -263,4 +278,4 @@ async def _level(interaction: discord.Interaction, username: str):
     await interaction.response.send_message(user)
 
 
-bot.run("TOKEN")
+bot.run(os.environ["BOT"])
