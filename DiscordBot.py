@@ -6,7 +6,7 @@ from collections import deque
 import requests
 import os
 from dotenv import load_dotenv
-
+from hanspell import spell_checker
 load_dotenv()
 
 
