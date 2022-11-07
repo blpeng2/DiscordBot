@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from discord import app_commands
 import youtube_dl
 from collections import deque
+import requests
 
 
 class Bot(discord.Client):
@@ -18,13 +19,26 @@ class Bot(discord.Client):
             self.synced = True
         print(f"we have logged in as {self.user}.")
 
+
 class ChatManager():
     @classmethod
     def checkGrammer(self, msg):
         return spell_checker.check(msg)
 
-    def checkAbuse(self):
-        pass
+    @classmethod
+    def checkAbuse(self, msg: str):
+        API_URL = "https://api-inference.huggingface.co/models/jason9693/SoongsilBERT-base-beep"
+        headers = {
+            "Authorization": "Token"}
+        payload = {
+            "inputs": f"{msg}",
+        }
+        response = requests.post(API_URL, headers=headers, json=payload).json()
+
+        if response[0][0]["score"] >= 0.4 and response[0][1]["score"] >= 0.3:
+            return True
+        else:
+            False
 
 
 class Music():
@@ -144,14 +158,25 @@ tree = app_commands.CommandTree(bot)
 chatdata = {}
 count = {}
 
-@tree.command(guild=discord.Object(id=serverid), name="맞춤법", description="checkGrammer")
+
+@bot.event
+async def on_message(msg: discord.Message):
+    if msg.author == bot.user:
+        return
+    if ChatManager.checkAbuse(msg.content):
+        await msg.channel.purge(limit=1)
+        await msg.channel.send("욕설 금지")
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="checkGrammer")
 async def self(interaction: discord.Interaction, msg: str):
     msg = ChatManager.checkGrammer(msg)
     if msg.original != msg.checked:
-        await interaction.response.send_message(ephemeral=True, embed = discord.Embed(title = '이렇게 바꾸는건 어떨까요 ?', description=f"{msg.original}\n  ➡{msg.checked}", color = 0x00ff00))
+        await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='이렇게 바꾸는건 어떨까요 ?', description=f"{msg.original}\n  ➡{msg.checked}", color=0x00ff00))
     else:
-        await interaction.response.send_message(ephemeral=True, embed = discord.Embed(title = '문법적 오류가 없습니다 !', color = 0x00ff00))
-        
+        await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='문법적 오류가 없습니다 !', color=0x00ff00))
+
+
 @tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
 async def _self(interaction: discord.Interaction):
     await interaction.response.send_message("complete")
