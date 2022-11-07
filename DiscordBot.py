@@ -18,6 +18,14 @@ class Bot(discord.Client):
             self.synced = True
         print(f"we have logged in as {self.user}.")
 
+class ChatManager():
+    @classmethod
+    def checkGrammer(self, msg):
+        return spell_checker.check(msg)
+
+    def checkAbuse(self):
+        pass
+
 
 class Music():
     def __init__(self) -> None:
@@ -133,7 +141,17 @@ class Title():
 bot = Bot()
 tree = app_commands.CommandTree(bot)
 
+chatdata = {}
+count = {}
 
+@tree.command(guild=discord.Object(id=serverid), name="맞춤법", description="checkGrammer")
+async def self(interaction: discord.Interaction, msg: str):
+    msg = ChatManager.checkGrammer(msg)
+    if msg.original != msg.checked:
+        await interaction.response.send_message(ephemeral=True, embed = discord.Embed(title = '이렇게 바꾸는건 어떨까요 ?', description=f"{msg.original}\n  ➡{msg.checked}", color = 0x00ff00))
+    else:
+        await interaction.response.send_message(ephemeral=True, embed = discord.Embed(title = '문법적 오류가 없습니다 !', color = 0x00ff00))
+        
 @tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
 async def _self(interaction: discord.Interaction):
     await interaction.response.send_message("complete")
