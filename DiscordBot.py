@@ -222,7 +222,10 @@ async def _create(interaction: discord.Interaction, name: str):
 @tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
 async def _add(interaction: discord.Interaction, url: str):
     await bot.music.add(url)
-    await interaction.response.send_message("추가 되었습니다.")
+    embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다")
+    for song in bot.music.playlist:
+        embed.add_field(name=song["name"], value=song["url"], inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="재생", description="노래를 재생합니다.")
@@ -233,14 +236,15 @@ async def _music(interaction: discord.Interaction):
     await interaction.followup.send("재생")
 
 
-# FIXME 정상작동 X
 @tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
 async def _remove(interaction: discord.Interaction, num: str):
     bot.music.playlist.remove(bot.music.playlist[int(num) + 1])
-    await interaction.response.send_message("삭제 되었습니다.")
+    embed = discord.Embed(title="플레이리스트", description="곡이 삭제 되었습니다")
+    for song in bot.music.playlist:
+        embed.add_field(name=song["name"], value=song["url"], inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
-# FIXME 정상작동 X
 @tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
 async def _playlist(interaction: discord.Interaction):
     embed = discord.Embed(title="플레이리스트")
@@ -258,7 +262,10 @@ async def _pause(interaction: discord.Interaction):
 @tree.command(guild=discord.Object(id=1038138701961769021), name="스킵", description="노래를 스킵합니다.")
 async def _stop(interaction: discord.Interaction):
     bot.music.stop()
-    await interaction.response.send_message("스킵")
+    embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.")
+    for song in bot.music.playlist:
+        embed.add_field(name=song["name"], value=song["url"], inline=False)
+    await interaction.response.send_message(embed=embed)
 
 # 매개변수를 lowercase로 작성하지 않으면 error 발생
 
