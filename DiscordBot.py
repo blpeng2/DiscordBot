@@ -93,9 +93,13 @@ class Music():
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(url, download=False)
-            url = info['formats'][0]['url']
+            url2 = info['formats'][0]['url']
             self.playlist.append(
-                await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS))
+                {
+                    "audio": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
+                    "name": info["title"],
+                    "url": url
+                })
 
     async def connect(self):
         voiceChannel = bot.get_channel(1038138702670614551)
@@ -106,7 +110,7 @@ class Music():
         if self.__vc.is_paused():
             self.__vc.resume()
         elif self.playlist:
-            self.__vc.play(self.playlist[0],
+            self.__vc.play(self.playlist[0]["audio"],
                            after=lambda e: self.play())
             self.playlist.popleft()
 
@@ -118,13 +122,9 @@ class Music():
 
 
 class Status():
-    def __init__(self) -> None:
-        pass
-
     @classmethod
     def getStatus(self, username: str) -> dict:
-        client = MongoClient(
-            os.getenv("MONGO"))
+        client = MongoClient(os.getenv("MONGO"))
 
         db = client["Discord"]["User"]
         # TODO 아무도 찾지 못했을 경우 예외처리가 필요
@@ -133,8 +133,7 @@ class Status():
 
     @classmethod
     def createStatus(self, post: dict):
-        client = MongoClient(
-            os.getenv("MONGO"))
+        client = MongoClient(os.getenv("MONGO"))
 
         db = client["Discord"]["User"]
         # TODO 저장이 되었는지 확인하는 코드가 필요
@@ -143,9 +142,7 @@ class Status():
 
     @classmethod
     def refreshRanking(self):
-        client = MongoClient(
-            os.getenv("MONGO"))
-
+        client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         users = []
         for post in db.find():
@@ -166,8 +163,7 @@ class Status():
 
     @classmethod
     def addExp(self, userName, exp: int):
-        client = MongoClient(
-            os.getenv("MONGO"))
+        client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         user = db.find_one({"userName": userName})
         user["exp"] += exp
@@ -240,14 +236,17 @@ async def _music(interaction: discord.Interaction):
 # FIXME 정상작동 X
 @tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
 async def _remove(interaction: discord.Interaction, num: str):
-    bot.music.playlist.remove(bot.music.playlist[int(num)])
+    bot.music.playlist.remove(bot.music.playlist[int(num) + 1])
     await interaction.response.send_message("삭제 되었습니다.")
 
 
 # FIXME 정상작동 X
 @tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
 async def _playlist(interaction: discord.Interaction):
-    await interaction.response.send_message(bot.music.playlist)
+    embed = discord.Embed(title="플레이리스트")
+    for song in bot.music.playlist:
+        embed.add_field(name=song["name"], value=song["url"], inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="일시정지", description="노래를 일시정지합니다.")
