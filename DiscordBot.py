@@ -13,6 +13,60 @@ from hanspell import spell_checker
 load_dotenv()
 
 
+class Music():
+    def __init__(self) -> None:
+        self.__vc = None
+        self.playlist = deque()
+        self.is_playing = False
+
+    async def add(self, url):
+        YDL_OPTIONS = {
+            'format': 'bestaudio/best',
+            'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
+            'restrictfilenames': True,
+            'nocheckcertificate': True,
+            'ignoreerrors': False,
+            'logtostderr': False,
+            'quiet': True,
+            'extract_flat': True,
+            'skip_download': True,
+            'default_search': 'auto',
+            'source_address': '0.0.0.0',  # ipv6 addresses cause issues sometimes
+            'force-ipv4': True,
+            'cachedir': False
+        }
+        FFMPEG_OPTIONS = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+        with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(url, download=False)
+            url2 = info['formats'][0]['url']
+            self.playlist.append(
+                {
+                    "audio": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
+                    "name": info["title"],
+                    "url": url
+                })
+
+    async def connect(self):
+        voiceChannel = bot.get_channel(1038138702670614551)
+        if self.__vc is None:
+            self.__vc: discord.VoiceClient = await voiceChannel.connect()
+
+    def play(self):
+        if self.__vc.is_paused():
+            self.__vc.resume()
+        elif self.playlist:
+            self.__vc.play(self.playlist[0]["audio"],
+                           after=lambda e: self.play())
+            self.playlist.popleft()
+
+    def pause(self):
+        self.__vc.pause()
+
+    def stop(self):
+        self.__vc.stop()
+
+
 class Bot(discord.Client):
     def __init__(self):
         super().__init__(intents=discord.Intents.all())
@@ -66,60 +120,6 @@ class ChatManager():
         if response[0][0]["label"] == "hate":
             return True
         return False
-
-
-class Music():
-    def __init__(self) -> None:
-        self.__vc = None
-        self.playlist = deque()
-        self.is_playing = False
-
-    async def add(self, url):
-        YDL_OPTIONS = {
-            'format': 'bestaudio/best',
-            'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
-            'restrictfilenames': True,
-            'nocheckcertificate': True,
-            'ignoreerrors': False,
-            'logtostderr': False,
-            'quiet': True,
-            'extract_flat': True,
-            'skip_download': True,
-            'default_search': 'auto',
-            'source_address': '0.0.0.0',  # ipv6 addresses cause issues sometimes
-            'force-ipv4': True,
-            'cachedir': False
-        }
-        FFMPEG_OPTIONS = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-        with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
-            url2 = info['formats'][0]['url']
-            self.playlist.append(
-                {
-                    "audio": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
-                    "name": info["title"],
-                    "url": url
-                })
-
-    async def connect(self):
-        voiceChannel = bot.get_channel(1038138702670614551)
-        if self.__vc is None:
-            self.__vc: discord.VoiceClient = await voiceChannel.connect()
-
-    def play(self):
-        if self.__vc.is_paused():
-            self.__vc.resume()
-        elif self.playlist:
-            self.__vc.play(self.playlist[0]["audio"],
-                           after=lambda e: self.play())
-            self.playlist.popleft()
-
-    def pause(self):
-        self.__vc.pause()
-
-    def stop(self):
-        self.__vc.stop()
 
 
 class Status():
@@ -197,10 +197,19 @@ async def _self(interaction: discord.Interaction):
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
 async def _remind(interaction: discord.Interaction, time: str, *, text: str):
-    """Remind to do something on a date.
-
-    The date must be in ``Y/M/D`` format."""
-    date = datetime.datetime(*map(int, time.split("/")))
+    if time[-1] == "뒤":
+        time = time[:-1].strip()
+        arrayOfTime = time.split()
+        date = datetime.datetime.now()
+        for __time in arrayOfTime:
+            if __time[-1] == "초":
+                date += datetime.timedelta(seconds=int(__time[:-1]))
+            elif __time[-1] == "분":
+                date += datetime.timedelta(minutes=int(__time[:-1]))
+            elif __time[-2:] == "시간":
+                date += datetime.timedelta(hours=int(__time[:-2]))
+    else:
+        pass
     date -= datetime.timedelta(hours=9)
 
     timers.Timer(bot, "reminder", date, args=(
