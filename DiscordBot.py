@@ -293,9 +293,11 @@ async def _level(interaction: discord.Interaction, username: str):
         return
     Status.refreshRanking()
     user = Status.getStatus(username)
-
-    # TODO 예쁘게 꾸며서 메세지 보내도록 해야함
-    await interaction.response.send_message(user)
+    embed = discord.Embed(title="경험치")
+    embed.add_field(name="name", value=user["userName"], inline=False)
+    embed.add_field(name="exp", value=user["exp"], inline=False)
+    embed.add_field(name="rank", value=f"{user['rank']}등", inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
 bot.run(os.environ["BOT"])
