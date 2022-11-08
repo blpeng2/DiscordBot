@@ -6,6 +6,8 @@ from collections import deque
 import requests
 import os
 from dotenv import load_dotenv
+import datetime
+from discord.ext import timers
 
 load_dotenv()
 
@@ -31,6 +33,11 @@ class Bot(discord.Client):
             await msg.channel.send("욕설 금지")
             return
         Status.addExp(msg.author.name, 10)
+
+    async def on_reminder(self, channel_id, author_id, text):
+        channel = bot.get_channel(channel_id)
+
+        await channel.send("<@{0}>, 알람입니다: {1}".format(author_id, text))
 
 
 class ChatManager():
@@ -195,6 +202,19 @@ async def self(interaction: discord.Interaction, msg: str):
 @tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
 async def _self(interaction: discord.Interaction):
     await interaction.response.send_message("complete")
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
+async def _remind(interaction: discord.Interaction, time: str, *, text: str):
+    """Remind to do something on a date.
+
+    The date must be in ``Y/M/D`` format."""
+    date = datetime.datetime(*map(int, time.split("/")))
+    date -= datetime.timedelta(hours=9)
+
+    timers.Timer(bot, "reminder", date, args=(
+        interaction.channel.id, interaction.user.id, text)).start()
+    await interaction.response.send_message("알람설정 완료")
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="생성", description="끝말잇기를 진행할 방을 생성합니다")
