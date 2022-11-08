@@ -31,25 +31,27 @@ class Bot(discord.Client):
             return
         if ChatManager.checkAbuse(msg.content):
             await msg.channel.purge(limit=1)
-            await msg.channel.send("욕설 금지")
+            embed = discord.Embed(title="욕설 금지")
+            embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
+            await msg.channel.send(embed=embed)
             return
         Status.addExp(msg.author.name, 10)
 
     async def on_reminder(self, channel_id, author_id, text):
         channel = bot.get_channel(channel_id)
+        await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
 
-        await channel.send("<@{0}>, 알람입니다: {1}".format(author_id, text))
+
+bot = Bot()
+tree = app_commands.CommandTree(bot)
 
 
 class ChatManager():
-    def checkMacro(self):
-        pass
-
     @classmethod
     def checkGrammer(self, msg):
         return spell_checker.check(msg)
 
-    @classmethod
+    @ classmethod
     def checkAbuse(self, msg: str):
         API_URL = os.getenv("NLP")
         headers = {
@@ -63,8 +65,7 @@ class ChatManager():
         response = requests.post(API_URL, headers=headers, json=payload).json()
         if response[0][0]["label"] == "hate":
             return True
-        else:
-            False
+        return False
 
 
 class Music():
@@ -122,25 +123,22 @@ class Music():
 
 
 class Status():
-    @classmethod
+    @ classmethod
     def getStatus(self, username: str) -> dict:
         client = MongoClient(os.getenv("MONGO"))
-
         db = client["Discord"]["User"]
-        # TODO 아무도 찾지 못했을 경우 예외처리가 필요
         user = db.find_one({"userName": username})
         return user
 
-    @classmethod
+    @ classmethod
     def createStatus(self, post: dict):
         client = MongoClient(os.getenv("MONGO"))
-
         db = client["Discord"]["User"]
-        # TODO 저장이 되었는지 확인하는 코드가 필요
-        db.insert_one(post)
-        return True
+        if db.insert_one(post):
+            return True
+        return False
 
-    @classmethod
+    @ classmethod
     def refreshRanking(self):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
@@ -161,7 +159,7 @@ class Status():
             db.replace_one({"userName": user["userName"]}, user)
         return True
 
-    @classmethod
+    @ classmethod
     def addExp(self, userName, exp: int):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
@@ -174,20 +172,16 @@ class Title():
     def __init__(self) -> None:
         pass
 
-    @classmethod
+    @ classmethod
     async def addTitle(self, user: discord.Member, title):
         await user.add_roles(title)
 
-    @classmethod
+    @ classmethod
     async def removeTitle(self, user: discord.Member, title):
         await user.remove_roles(title)
 
 
-bot = Bot()
-tree = app_commands.CommandTree(bot)
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="checkGrammer")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="checkGrammer")
 async def self(interaction: discord.Interaction, msg: str):
     msg = ChatManager.checkGrammer(msg)
     if msg.original != msg.checked:
@@ -196,12 +190,12 @@ async def self(interaction: discord.Interaction, msg: str):
         await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='문법적 오류가 없습니다 !', color=0x00ff00))
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
 async def _self(interaction: discord.Interaction):
     await interaction.response.send_message("complete")
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
 async def _remind(interaction: discord.Interaction, time: str, *, text: str):
     """Remind to do something on a date.
 
@@ -214,12 +208,12 @@ async def _remind(interaction: discord.Interaction, time: str, *, text: str):
     await interaction.response.send_message("알람설정 완료")
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="생성", description="끝말잇기를 진행할 방을 생성합니다")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="생성", description="끝말잇기를 진행할 방을 생성합니다")
 async def _create(interaction: discord.Interaction, name: str):
     await interaction.response.send_message(f"I am working! {name}", ephemeral=True)
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
 async def _add(interaction: discord.Interaction, url: str):
     await bot.music.add(url)
     embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다")
@@ -228,7 +222,7 @@ async def _add(interaction: discord.Interaction, url: str):
     await interaction.response.send_message(embed=embed)
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="재생", description="노래를 재생합니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="재생", description="노래를 재생합니다.")
 async def _music(interaction: discord.Interaction):
     await interaction.response.defer()
     await bot.music.connect()
@@ -236,7 +230,7 @@ async def _music(interaction: discord.Interaction):
     await interaction.followup.send("재생")
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
 async def _remove(interaction: discord.Interaction, num: str):
     bot.music.playlist.remove(bot.music.playlist[int(num) + 1])
     embed = discord.Embed(title="플레이리스트", description="곡이 삭제 되었습니다")
@@ -245,7 +239,7 @@ async def _remove(interaction: discord.Interaction, num: str):
     await interaction.response.send_message(embed=embed)
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
 async def _playlist(interaction: discord.Interaction):
     embed = discord.Embed(title="플레이리스트")
     for song in bot.music.playlist:
@@ -253,13 +247,13 @@ async def _playlist(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="일시정지", description="노래를 일시정지합니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="일시정지", description="노래를 일시정지합니다.")
 async def _pause(interaction: discord.Interaction):
     bot.music.pause()
     await interaction.response.send_message("일시정지")
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="스킵", description="노래를 스킵합니다.")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="스킵", description="노래를 스킵합니다.")
 async def _stop(interaction: discord.Interaction):
     bot.music.stop()
     embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.")
@@ -270,7 +264,7 @@ async def _stop(interaction: discord.Interaction):
 # 매개변수를 lowercase로 작성하지 않으면 error 발생
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다")
 async def _title(interaction: discord.Interaction, username: str, title_name: str):
     role = discord.utils.find(
         lambda r: r.name == title_name, interaction.guild.roles)
@@ -294,17 +288,18 @@ async def _title(interaction: discord.Interaction, username: str, title_name: st
         await interaction.response.send_message("칭호를 추가했습니다.", ephemeral=True)
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다")
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다")
 async def _level(interaction: discord.Interaction, username: str):
-    if not discord.utils.find(lambda m: m.name == username, interaction.guild.members):
-        return
-    Status.refreshRanking()
-    user = Status.getStatus(username)
     embed = discord.Embed(title="경험치")
-    embed.add_field(name="name", value=user["userName"], inline=False)
-    embed.add_field(name="exp", value=user["exp"], inline=False)
-    embed.add_field(name="rank", value=f"{user['rank']}등", inline=False)
+    # 유저가 없는 경우
+    if not discord.utils.find(lambda m: m.name == username, interaction.guild.members):
+        embed.add_field(name="🚫ERROR🚫", value="그런 사람은 존재하지 않아요.")
+    else:
+        Status.refreshRanking()
+        user = Status.getStatus(username)
+        embed.add_field(name="name", value=user["userName"], inline=False)
+        embed.add_field(name="exp", value=user["exp"], inline=False)
+        embed.add_field(name="rank", value=f"{user['rank']}등", inline=False)
     await interaction.response.send_message(embed=embed)
-
 
 bot.run(os.environ["BOT"])
