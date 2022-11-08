@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import datetime
 from discord.ext import timers
+from hanspell import spell_checker
 
 load_dotenv()
 
