@@ -36,6 +36,7 @@
 #### in windows
 ```
 pip install hanspell
+pip install discord-ext-bot
 ```
 ## 📖 License
 
