@@ -2,7 +2,7 @@ import discord
 from pymongo import MongoClient
 from discord import app_commands
 import youtube_dl
-from collections import deque
+from collections import deque, defaultdict
 import requests
 import os
 from dotenv import load_dotenv
@@ -83,6 +83,47 @@ class Music():
 
     def stop(self):
         self.__vc.stop()
+
+
+class Stock():
+    def __init__(self, stockName) -> None:
+        stock = DB.getStock(stockName)
+        self.stockName = stock["stockName"]
+        self.price = stock["price"]
+
+    def getStock(self):
+        return {
+            "stockName": self.stockName,
+            "price": self.price
+        }
+
+
+class StockUser():
+    def __init__(self, userName) -> None:
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["StockUser"]
+        stockUser = db.find_one({"userName": userName})
+        self.userId = stockUser["userId"]
+        self.userName = stockUser["userName"]
+        self.money = stockUser["money"]
+        self.rank = stockUser["rank"]
+        self.stocks = defaultdict(int, stockUser["stocks"])
+
+
+class StockGame():
+    @classmethod
+    def buy(self, user: StockUser, stock: Stock):
+        stockUser = StockUser(user.userName)
+        stockUser.money -= stock.price
+        stockUser.stocks[stock.stockName] += 1
+        DB.updateStockUser(stockUser)
+
+    @classmethod
+    def sell(self, user: StockUser, stock: Stock):
+        stockUser = StockUser(user.userName)
+        stockUser.money += stock.price
+        stockUser.stocks[stock.stockName] -= 1
+        DB.updateStockUser(stockUser)
 
 
 class Bot(discord.Client):
@@ -192,7 +233,7 @@ class DB():
             })
 
     @ classmethod
-    def refreshRanking(self):
+    def refreshExpRanking(self):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         users = []
@@ -211,6 +252,75 @@ class DB():
             user["rank"] = rank + 1
             db.replace_one({"userName": user["userName"]}, user)
         return True
+
+    @classmethod
+    def refreshStockUserRanking(self):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["StockUser"]
+        users = []
+        for post in db.find():
+            users.append(
+                {
+                    "uesrId": post["userId"],
+                    "userName": post["userName"],
+                    "money": post["money"],
+                    "rank": post["rank"],
+                    "stocks": post["stocks"]
+                })
+
+        users.sort(key=lambda user: user["money"], reverse=True)
+        for rank, user in enumerate(users):
+            user["rank"] = rank + 1
+            db.replace_one({"userName": user["userName"]}, user)
+        return True
+
+    @classmethod
+    def updateStockUser(self, stockUser: StockUser):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["StockUser"]
+        db.replace_one(
+            {
+                "userName": stockUser.userName},
+            {
+                "userId": stockUser.userId,
+                "userName": stockUser.userName,
+                "money": stockUser.money,
+                "rank": stockUser.rank,
+                "stocks": stockUser.stocks
+            })
+
+    @classmethod
+    def getStock(self, stock: str):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["Stock"]
+        return db.find_one({"stockName": stock})
+
+    @classmethod
+    def getStocks(self):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["Stock"]
+        return db.find()
+
+    @classmethod
+    def createStock(self, post):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["Stock"]
+        db.insert_one({
+            "stockName": post["stockName"],
+            "price": post["price"]
+        })
+
+    @classmethod
+    def createStockUser(self, post):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["StockUser"]
+        db.insert_one({
+            "userId": post["userId"],
+            "userName": post["userName"],
+            "money": post["money"],
+            "rank": post["rank"],
+            "stocks": post["stocks"]
+        })
 
 
 class Title():
@@ -323,17 +433,74 @@ async def title(interaction: discord.Interaction, username: str, title_name: str
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다")
-async def status(interaction: discord.Interaction, userName: str):
+async def status(interaction: discord.Interaction, username: str):
     embed = discord.Embed(title="경험치")
     # 유저가 없는 경우
-    if not discord.utils.find(lambda m: m.name == userName, interaction.guild.members):
+    if not discord.utils.find(lambda m: m.name == username, interaction.guild.members):
         embed.add_field(name="🚫ERROR🚫", value="그런 사람은 존재하지 않아요.")
     else:
-        DB.refreshRanking()
-        user = Status(userName)
+        DB.refreshExpRanking()
+        user = Status(username)
         embed.add_field(name="name", value=user.userName, inline=False)
         embed.add_field(name="exp", value=user.exp, inline=False)
         embed.add_field(name="rank", value=f"{user.rank}등", inline=False)
     await interaction.response.send_message(embed=embed)
+
+
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="구매", description="구매")
+async def stock_buy(interaction: discord.Interaction, stockname: str):
+    user = StockUser(interaction.user.name)
+    stock = Stock(stockname)
+    StockGame.buy(user, stock)
+    await interaction.response.send_message("구매했습니다.")
+
+
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="판매", description="판매")
+async def stock_sell(interaction: discord.Interaction, stockname: str):
+    user = StockUser(interaction.user.name)
+    stock = Stock(stockname)
+    StockGame.sell(user, stock)
+    await interaction.response.send_message("판매했습니다.")
+
+
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="지갑", description="지갑")
+async def stock_wallet(interaction: discord.Interaction):
+    user = StockUser(interaction.user.name)
+    await interaction.response.send_message(user.money)
+
+
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식현황", description="주식현황")
+async def stock_stocks(interaction: discord.Interaction):
+    stocks = DB.getStocks()
+    arr = []
+    for stock in stocks:
+        arr.append({
+            "name": stock["stockName"],
+            "price": stock["price"]
+        })
+    await interaction.response.send_message(arr)
+
+
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식생성", description="주식생성")
+async def stock_create(interaction: discord.Interaction, stockname: str, price: int):
+    DB.createStock({
+        "stockName": stockname,
+        "price": price
+    })
+    await interaction.response.send_message("생성되었습니다.")
+
+
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식유저생성", description="주식유저생성")
+async def stock_user_create(interaction: discord.Interaction, username: str):
+    user = discord.utils.find(
+        lambda m: m.name == username, interaction.guild.members)
+    DB.createStockUser({
+        "userId": user.id,
+        "userName": username,
+        "money": 0,
+        "rank": 0,
+        "stocks": defaultdict(int)
+    })
+    await interaction.response.send_message("생성 완료")
 
 bot.run(os.environ["BOT"])
