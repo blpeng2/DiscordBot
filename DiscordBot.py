@@ -13,6 +13,26 @@ from hanspell import spell_checker
 load_dotenv()
 
 
+class Timer():
+    @classmethod
+    def calc(self, time):
+        if time[-1] == "뒤":
+            time = time[:-1].strip()
+            arrayOfTime = time.split()
+            date = datetime.datetime.now()
+            for __time in arrayOfTime:
+                if __time[-1] == "초":
+                    date += datetime.timedelta(seconds=int(__time[:-1]))
+                elif __time[-1] == "분":
+                    date += datetime.timedelta(minutes=int(__time[:-1]))
+                elif __time[-2:] == "시간":
+                    date += datetime.timedelta(hours=int(__time[:-2]))
+        else:
+            pass
+        date -= datetime.timedelta(hours=9)
+        return date
+
+
 class Music():
     def __init__(self) -> None:
         self.__vc = None
@@ -47,8 +67,7 @@ class Music():
                     "url": url
                 })
 
-    async def connect(self):
-        voiceChannel = bot.get_channel(1038138702670614551)
+    async def connect(self, voiceChannel):
         if self.__vc is None:
             self.__vc: discord.VoiceClient = await voiceChannel.connect()
 
@@ -56,8 +75,7 @@ class Music():
         if self.__vc.is_paused():
             self.__vc.resume()
         elif self.playlist:
-            self.__vc.play(self.playlist[0]["audio"],
-                           after=lambda e: self.play())
+            self.__vc.play(self.playlist[0]["audio"], after=self.play)
             self.playlist.popleft()
 
     def pause(self):
@@ -89,7 +107,8 @@ class Bot(discord.Client):
             embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
             await msg.channel.send(embed=embed)
             return
-        Status.addExp(msg.author.name, 10)
+        user = Status(msg.author.name)
+        user.addExp(10)
 
     async def on_reminder(self, channel_id, author_id, text):
         channel = bot.get_channel(channel_id)
@@ -123,20 +142,54 @@ class ChatManager():
 
 
 class Status():
-    @ classmethod
-    def getStatus(self, username: str) -> dict:
+    def __init__(self, userName) -> None:
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
-        user = db.find_one({"userName": username})
-        return user
+        user = db.find_one({"userName": userName})
+        self.userId = user["userId"]
+        self.userName = user["userName"]
+        self.exp = user["exp"]
+        self.level = user["level"]
+        self.rank = user["rank"]
 
-    @ classmethod
-    def createStatus(self, post: dict):
+    def getStatus(self):
+        return {
+            "userId": self.userId,
+            "userName": self.userName,
+            "exp": self.exp,
+            "level": self.level,
+            "rank": self.rank
+        }
+
+    def addExp(self, exp):
+        self.exp += exp
+        DB.updateUser(self.getStatus())
+
+    def getUser(self):
+        return DB.getUser(self.userName)
+
+
+class DB():
+    @classmethod
+    def getUser(self, userName):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
-        if db.insert_one(post):
-            return True
-        return False
+        return db.find_one({"userName": userName})
+
+    @classmethod
+    def updateUser(self, status):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["User"]
+        db.replace_one(
+            {
+                "userName": status.userName},
+            {
+                "userId": status.userId,
+                "userName": status.userName,
+                "exp": status.exp,
+                "level": status.level,
+                "rank": status.rank
+            })
 
     @ classmethod
     def refreshRanking(self):
@@ -159,14 +212,6 @@ class Status():
             db.replace_one({"userName": user["userName"]}, user)
         return True
 
-    @ classmethod
-    def addExp(self, userName, exp: int):
-        client = MongoClient(os.getenv("MONGO"))
-        db = client["Discord"]["User"]
-        user = db.find_one({"userName": userName})
-        user["exp"] += exp
-        db.replace_one({"userName": user["userName"]}, user)
-
 
 class Title():
     def __init__(self) -> None:
@@ -182,7 +227,7 @@ class Title():
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="checkGrammer")
-async def self(interaction: discord.Interaction, msg: str):
+async def grammer(interaction: discord.Interaction, msg: str):
     msg = ChatManager.checkGrammer(msg)
     if msg.original != msg.checked:
         await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='이렇게 바꾸는건 어떨까요 ?', description=f"{msg.original}\n  ➡{msg.checked}", color=0x00ff00))
@@ -190,40 +235,20 @@ async def self(interaction: discord.Interaction, msg: str):
         await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='문법적 오류가 없습니다 !', color=0x00ff00))
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="test", description="testing")
-async def _self(interaction: discord.Interaction):
-    await interaction.response.send_message("complete")
-
-
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
-async def _remind(interaction: discord.Interaction, time: str, *, text: str):
-    if time[-1] == "뒤":
-        time = time[:-1].strip()
-        arrayOfTime = time.split()
-        date = datetime.datetime.now()
-        for __time in arrayOfTime:
-            if __time[-1] == "초":
-                date += datetime.timedelta(seconds=int(__time[:-1]))
-            elif __time[-1] == "분":
-                date += datetime.timedelta(minutes=int(__time[:-1]))
-            elif __time[-2:] == "시간":
-                date += datetime.timedelta(hours=int(__time[:-2]))
-    else:
-        pass
-    date -= datetime.timedelta(hours=9)
-
-    timers.Timer(bot, "reminder", date, args=(
+async def remind(interaction: discord.Interaction, time: str, text: str):
+    timers.Timer(bot, "reminder", Timer.calc(time), args=(
         interaction.channel.id, interaction.user.id, text)).start()
     await interaction.response.send_message("알람설정 완료")
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="생성", description="끝말잇기를 진행할 방을 생성합니다")
-async def _create(interaction: discord.Interaction, name: str):
+async def create(interaction: discord.Interaction, name: str):
     await interaction.response.send_message(f"I am working! {name}", ephemeral=True)
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
-async def _add(interaction: discord.Interaction, url: str):
+async def music_add(interaction: discord.Interaction, url: str):
     await bot.music.add(url)
     embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다")
     for song in bot.music.playlist:
@@ -232,15 +257,15 @@ async def _add(interaction: discord.Interaction, url: str):
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="재생", description="노래를 재생합니다.")
-async def _music(interaction: discord.Interaction):
+async def music_play(interaction: discord.Interaction):
     await interaction.response.defer()
-    await bot.music.connect()
+    await bot.music.connect(interaction.message.author.voice.channel)
     bot.music.play()
     await interaction.followup.send("재생")
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
-async def _remove(interaction: discord.Interaction, num: str):
+async def music_del(interaction: discord.Interaction, num: str):
     bot.music.playlist.remove(bot.music.playlist[int(num) + 1])
     embed = discord.Embed(title="플레이리스트", description="곡이 삭제 되었습니다")
     for song in bot.music.playlist:
@@ -249,7 +274,7 @@ async def _remove(interaction: discord.Interaction, num: str):
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
-async def _playlist(interaction: discord.Interaction):
+async def music_playlist(interaction: discord.Interaction):
     embed = discord.Embed(title="플레이리스트")
     for song in bot.music.playlist:
         embed.add_field(name=song["name"], value=song["url"], inline=False)
@@ -257,13 +282,13 @@ async def _playlist(interaction: discord.Interaction):
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="일시정지", description="노래를 일시정지합니다.")
-async def _pause(interaction: discord.Interaction):
+async def music_pause(interaction: discord.Interaction):
     bot.music.pause()
     await interaction.response.send_message("일시정지")
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="스킵", description="노래를 스킵합니다.")
-async def _stop(interaction: discord.Interaction):
+async def music_skip(interaction: discord.Interaction):
     bot.music.stop()
     embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.")
     for song in bot.music.playlist:
@@ -274,7 +299,7 @@ async def _stop(interaction: discord.Interaction):
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다")
-async def _title(interaction: discord.Interaction, username: str, title_name: str):
+async def title(interaction: discord.Interaction, username: str, title_name: str):
     role = discord.utils.find(
         lambda r: r.name == title_name, interaction.guild.roles)
 
@@ -298,17 +323,17 @@ async def _title(interaction: discord.Interaction, username: str, title_name: st
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다")
-async def _level(interaction: discord.Interaction, username: str):
+async def status(interaction: discord.Interaction, userName: str):
     embed = discord.Embed(title="경험치")
     # 유저가 없는 경우
-    if not discord.utils.find(lambda m: m.name == username, interaction.guild.members):
+    if not discord.utils.find(lambda m: m.name == userName, interaction.guild.members):
         embed.add_field(name="🚫ERROR🚫", value="그런 사람은 존재하지 않아요.")
     else:
-        Status.refreshRanking()
-        user = Status.getStatus(username)
-        embed.add_field(name="name", value=user["userName"], inline=False)
-        embed.add_field(name="exp", value=user["exp"], inline=False)
-        embed.add_field(name="rank", value=f"{user['rank']}등", inline=False)
+        DB.refreshRanking()
+        user = Status(userName)
+        embed.add_field(name="name", value=user.userName, inline=False)
+        embed.add_field(name="exp", value=user.exp, inline=False)
+        embed.add_field(name="rank", value=f"{user.rank}등", inline=False)
     await interaction.response.send_message(embed=embed)
 
 bot.run(os.environ["BOT"])
