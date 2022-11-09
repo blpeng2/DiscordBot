@@ -1,15 +1,43 @@
-#### DISCORD BOT 
-# <center>GNU BOT</center>
-*****
+<p align="center"><img src="https://github.com/qor0530/README/blob/main/GNU.png"></p>
+<h1 align="center">
+  <br>
+  GNU BOT
+  <br>
+</h1>
 
-#### <center>디스코드 봇입니다. [discord.py](https://github.com/Rapptz/discord.py)</center>
+<h3 align=center>bulit with <a href=https://github.com/Rapptz/discord.py>discord.py</a></h3>
+<div align=center>
 
-*****
-<img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=Python&logoColor=white"/><img src="https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=MongoDB&logoColor=white"/>
+</div>
 
+<p align="center">
+  <a href="#about">About</a>
+  •
+  <a href="#Features">Features</a>
+  •
+  <a href="#Install">Install</a>
+  •
+  <a href="#license">License</a>
+  •
+  <a href="#credits">Credits</a>
+</p>
 
-### Installing 🚀
-***
+## ❓ About
+지누봇은 당신의 디스코드 채널에 다양한 기능들을 제공합니다 ! 
+## ❗ Features
+* **🎵Music**:
+* **🎮Game**: 
+* **🏅Level**:
+* **🎀Title**:
+* **📆TimeManager**:
+* **👨‍👨ChatManager**:
+* **✅CheckGrammar**:
+## 📝 Install
+#### in windows
 ```
 pip install hanspell
 ```
+## 📖 License
+
+## 📜 Credits
+
