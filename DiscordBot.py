@@ -612,4 +612,4 @@ async def stock_user_create(interaction: discord.Interaction, username: str):
     })
     await interaction.response.send_message("생성 완료")
 
-bot.run("MTAzODQxMjUwMjAzMzI1NjQ0OA.Gedz_n.E5Us31uZDyuxsR30A78JMtAfgU1DITeUjkjYI8")
+bot.run(os.environ["BOT"])
