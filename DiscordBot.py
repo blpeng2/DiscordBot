@@ -166,7 +166,7 @@ class EndTalk():
             val = []
         return val
 
-    def checkword(query, room):
+    def checkword(self, query, room):
         url = 'https://krdict.korean.go.kr/api/search?key=' + \
             apikey + '&part=word&sort=popular&num=100&pos=1&q=' + query
         response = requests.get(url, verify=False)
@@ -210,8 +210,10 @@ class Bot(discord.Client):
             await msg.channel.send(embed=embed)
             return
         for room in rooms:
-            if room.is_playing and msg.author == room.last_user:
+            if room.is_playing and (msg.author == room.last_user):
+                print('여기')
                 result = endtalk.checkword(msg.content, room)
+                await msg.channel.send(f"{result} > 단어 받았습니다")
                 if result == '':
                     await msg.channel.send("없는 단어입니다.")
                 elif len(result) == 1:
@@ -220,7 +222,7 @@ class Bot(discord.Client):
                     await msg.channel.send("이미 사용한 단어입니다.")
                 elif result[len(result)-1] in blacklist:
                     await msg.channel.send("아.. 좀 치사한데요..")
-                elif room.last_word != result[0]:
+                elif room.last_word != result[0] and room.last_word != "":
                     await msg.channel.send(f"{room.last_word}(으)로 시작하는 단어를 입력해 주십시오.")
                 else:
                     if room.user_list.index(room.last_user) == len(room.user_list):
@@ -230,7 +232,7 @@ class Bot(discord.Client):
                             room.last_user) + 1]
                     room.history.append(msg.content)
                     room.last_word = result[-1]
-                    await msg.channel.send(f"{room.last_user}님 차례!")
+                    await msg.channel.send(f"{result} > 단어 받았습니다. {room.last_user}님 차례!")
         user = Status(msg.author.name)
         user.addExp(10)
 
@@ -460,6 +462,7 @@ async def _start(interaction: discord.Interaction, roomname: str):
         if room.name == roomname:
             isroom == True
             room.is_playing = True
+            room.last_user = room.user_list[0]
             await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0xeeafaf))
             return
         await interaction.response.send_message(embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0xeeafaf))
@@ -467,7 +470,10 @@ async def _start(interaction: discord.Interaction, roomname: str):
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
 async def _room_list(interaction: discord.Interaction):
-    pass
+    roomnamelist = []
+    for room in rooms:
+        roomnamelist.append(room.name)
+    await interaction.response.send_message(embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0xeeafaf))
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
