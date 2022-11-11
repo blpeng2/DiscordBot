@@ -231,8 +231,9 @@ class Bot(discord.Client):
                     room.history.append(msg.content)
                     room.last_word = result[-1]
                     await msg.channel.send(f"{room.last_user}님 차례!")
+        # DB에 유저가 없으면 user.userName = None
         user = Status(msg.author.name)
-        user.addExp(10)
+        if user.userName: user.addExp(10)
 
     async def on_reminder(self, channel_id, author_id, text):
         channel = bot.get_channel(channel_id)
@@ -270,11 +271,18 @@ class Status():
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         user = db.find_one({"userName": userName})
-        self.userId = user["userId"]
-        self.userName = user["userName"]
-        self.exp = user["exp"]
-        self.level = user["level"]
-        self.rank = user["rank"]
+        if user:
+            self.userId = user["userId"]
+            self.userName = user["userName"]
+            self.exp = user["exp"]
+            self.level = user["level"]
+            self.rank = user["rank"]
+        else:
+            self.userId = None
+            self.userName = None
+            self.exp = None
+            self.level = None
+            self.rank = None
 
     def getStatus(self):
         return {
@@ -295,7 +303,7 @@ class Status():
 
 class DB():
     @classmethod
-    def getUser(self, userName):
+    def getUser(self, userName) -> dict | None:
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         return db.find_one({"userName": userName})
@@ -314,6 +322,18 @@ class DB():
                 "level": status["level"],
                 "rank": status["rank"]
             })
+
+    @classmethod
+    def createStatusUser(self, interaction: discord.Interaction):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["User"]
+        db.insert_one({
+            "userId": interaction.user.id,
+            "userName": interaction.user.name,
+            "exp": 0,
+            "level": 0,
+            "rank": 0
+        })
 
     @ classmethod
     def refreshExpRanking(self):
@@ -575,6 +595,10 @@ async def status(interaction: discord.Interaction, username: str):
         embed.add_field(name="rank", value=f"{user.rank}등", inline=False)
     await interaction.response.send_message(embed=embed)
 
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="유저등록", description="status 유저를 등록합니다.")
+async def status_create_user(interaction: discord.Interaction):
+    DB.createStatusUser(interaction)
+    await interaction.response.send_message("생성되었습니다.")
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="구매", description="구매")
 async def stock_buy(interaction: discord.Interaction, stockname: str):
