@@ -14,6 +14,7 @@ load_dotenv()
 apikey = 'A4414D0156FDB74E92941151F0271F79'
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
 
+
 class Timer():
     @classmethod
     def calc(self, time):
@@ -126,6 +127,7 @@ class StockGame():
         stockUser.stocks[stock.stockName] -= 1
         DB.updateStockUser(stockUser)
 
+
 class Room():
     def __init__(self, name) -> None:
         self.name = name
@@ -134,47 +136,56 @@ class Room():
         self.last_word = ""
         self.history = []
         self.last_user = name
+
     def __call__(self):
         return self.user_list
 
+
 rooms = []
-    
+
 
 class EndTalk():
-    
-        #string list에서 단어, 품사와 같은 요소들을 추출할때 사용됩니다
+
+    # string list에서 단어, 품사와 같은 요소들을 추출할때 사용됩니다
     def midReturn(val, s, e):
         if s in val:
             val = val[val.find(s)+len(s):]
-            if e in val: val = val[:val.find(e)]
+            if e in val:
+                val = val[:val.find(e)]
         return val
-    #string에서 XML 등의 요소를 분석할때 사용됩니다
+    # string에서 XML 등의 요소를 분석할때 사용됩니다
+
     def midReturn_all(val, s, e):
         if s in val:
             tmp = val.split(s)
             val = []
             for i in range(0, len(tmp)):
-                if e in tmp[i]: val.append(tmp[i][:tmp[i].find(e)])
+                if e in tmp[i]:
+                    val.append(tmp[i][:tmp[i].find(e)])
         else:
             val = []
         return val
 
     def checkword(query, room):
-        url = 'https://krdict.korean.go.kr/api/search?key=' + apikey + '&part=word&sort=popular&num=100&pos=1&q=' + query
+        url = 'https://krdict.korean.go.kr/api/search?key=' + \
+            apikey + '&part=word&sort=popular&num=100&pos=1&q=' + query
         response = requests.get(url, verify=False)
         ans = ''
-        words = EndTalk.midReturn_all(response.text,'<item>','</item>')
+        words = EndTalk.midReturn_all(response.text, '<item>', '</item>')
         for w in words:
-            if not (w in room.history):           
-                word = EndTalk.midReturn(w,'<word>','</word>')
-                pos = EndTalk.midReturn(w,'<pos>','</pos>')
-                if len(word) > 1 and pos == '명사' and word == query: ans = w
-        if len(ans)>0:
-            return EndTalk.midReturn(ans, '<word>','</word>') 
+            if not (w in room.history):
+                word = EndTalk.midReturn(w, '<word>', '</word>')
+                pos = EndTalk.midReturn(w, '<pos>', '</pos>')
+                if len(word) > 1 and pos == '명사' and word == query:
+                    ans = w
+        if len(ans) > 0:
+            return EndTalk.midReturn(ans, '<word>', '</word>')
         else:
             return ''
 
+
 endtalk = EndTalk()
+
 
 class Bot(discord.Client):
     def __init__(self):
@@ -215,7 +226,8 @@ class Bot(discord.Client):
                     if room.user_list.index(room.last_user) == len(room.user_list):
                         room.last_user = room.user_list[0]
                     else:
-                        room.last_user = room.user_list[room.user_list.index(room.last_user) + 1]
+                        room.last_user = room.user_list[room.user_list.index(
+                            room.last_user) + 1]
                     room.history.append(msg.content)
                     room.last_word = result[-1]
                     await msg.channel.send(f"{room.last_user}님 차례!")
@@ -226,8 +238,10 @@ class Bot(discord.Client):
         channel = bot.get_channel(channel_id)
         await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
 
+
 bot = Bot()
 tree = app_commands.CommandTree(bot)
+
 
 class ChatManager():
     @classmethod
@@ -292,13 +306,13 @@ class DB():
         db = client["Discord"]["User"]
         db.replace_one(
             {
-                "userName": status.userName},
+                "userName": status["userName"]},
             {
-                "userId": status.userId,
-                "userName": status.userName,
-                "exp": status.exp,
-                "level": status.level,
-                "rank": status.rank
+                "userId": status["userId"],
+                "userName": status["userName"],
+                "exp": status["exp"],
+                "level": status["level"],
+                "rank": status["rank"]
             })
 
     @ classmethod
@@ -404,20 +418,21 @@ class Title():
     async def removeTitle(self, user: discord.Member, title):
         await user.remove_roles(title)
 
+
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기생성", description="끝말잇기방을 생성합니다.")
 async def _create(interaction: discord.Interaction, roomname: str):
     isroom = False
     for room in rooms:
         if room.name == roomname:
-            #checkroom    
+            # checkroom
             isroom = True
     if not isroom:
         temp = Room(roomname)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(embed = discord.Embed(title = '끝말잇기 방 생성 완료', description=f"{interaction.user}님", color = 0xeeafaf))   
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=0xeeafaf))
     else:
-        await interaction.response.send_message(embed = discord.Embed(title = '끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color = 0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=0xeeafaf))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기참가", description="끝말잇기방에 참가합니다.")
@@ -432,9 +447,9 @@ async def _join(interaction: discord.Interaction, roomname: str):
         temp = rooms.pop(roomnumber)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(embed = discord.Embed(title = '끝말잇기 참가 완료', description=f"{interaction.user}님", color = 0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=0xeeafaf))
     else:
-        await interaction.response.send_message(embed = discord.Embed(title = '이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color = 0xeeafaf)) 
+        await interaction.response.send_message(embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=0xeeafaf))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기시작", description="입력된 방의 끝말잇기게임를 시작합니다.")
@@ -445,13 +460,15 @@ async def _start(interaction: discord.Interaction, roomname: str):
         if room.name == roomname:
             isroom == True
             room.is_playing = True
-            await interaction.response.send_message(embed = discord.Embed(title = "끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color = 0xeeafaf))
+            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0xeeafaf))
             return
-        await interaction.response.send_message(embed = discord.Embed(title = "시작하지 못해요 ...", description="참가 먼저 해주세요", color = 0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0xeeafaf))
+
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
 async def _room_list(interaction: discord.Interaction):
     pass
+
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
 async def grammer(interaction: discord.Interaction, msg: str):
