@@ -33,7 +33,6 @@
 * **👨‍👨ChatManager**:
 * **✅CheckGrammar**:
 ## 📝 Install
-#### in windows
 ```
 py -3 -m pip install -U discord.py
 pip install pymongo
