@@ -37,7 +37,7 @@ class Timer():
 
 class Music():
     def __init__(self) -> None:
-        self.__vc = None
+        self.__voiceClient = None
         self.playlist = deque()
         self.is_playing = False
 
@@ -70,21 +70,21 @@ class Music():
                 })
 
     async def connect(self, voiceChannel):
-        if self.__vc is None:
-            self.__vc: discord.VoiceClient = await voiceChannel.connect()
+        if self.__voiceClient is None:
+            self.__voiceClient: discord.VoiceClient = await voiceChannel.connect()
 
     def play(self):
-        if self.__vc.is_paused():
-            self.__vc.resume()
+        if self.__voiceClient.is_paused():
+            self.__voiceClient.resume()
         elif self.playlist:
-            self.__vc.play(self.playlist[0]["audio"], after=self.play)
+            self.__voiceClient.play(self.playlist[0]["audio"], after=self.play)
             self.playlist.popleft()
 
     def pause(self):
-        self.__vc.pause()
+        self.__voiceClient.pause()
 
     def stop(self):
-        self.__vc.stop()
+        self.__voiceClient.stop()
 
 
 class Stock():
@@ -511,57 +511,61 @@ async def remind(interaction: discord.Interaction, time: str, text: str):
         interaction.channel.id, interaction.user.id, text)).start()
     await interaction.response.send_message("알람설정 완료")
 
+class MusicAddModal(discord.ui.Modal, title="노래 추가"):
+    url = discord.ui.TextInput(label="url")
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="곡추가", description="노래를 추가합니다.")
-async def music_add(interaction: discord.Interaction, url: str):
-    await bot.music.add(url)
-    embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다.")
-    for song in bot.music.playlist:
-        embed.add_field(name=song["name"], value=song["url"], inline=False)
-    await interaction.response.send_message(embed=embed)
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await bot.music.add(self.url.value)
+        embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다.")
+        for song in bot.music.playlist:
+            embed.add_field(name=song["name"], value=song["url"], inline=False)
+        await interaction.response.send_message(embed=embed)
 
+class MusicDelModal(discord.ui.Modal, title="노래 삭제"):
+    num = discord.ui.TextInput(label="num")
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="재생", description="노래를 재생합니다.")
-async def music_play(interaction: discord.Interaction):
-    await interaction.response.defer()
-    await bot.music.connect(interaction.message.author.voice.channel)
-    bot.music.play()
-    await interaction.followup.send("재생")
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        bot.music.playlist.remove(bot.music.playlist[int(self.num.value) + 1])
+        embed = discord.Embed(title="플레이리스트", description="곡이 삭제 되었습니다.")
+        for song in bot.music.playlist:
+            embed.add_field(name=song["name"], value=song["url"], inline=False)
+        await interaction.response.send_message(embed=embed)
 
-
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="곡삭제", description="노래를 삭제합니다.")
-async def music_del(interaction: discord.Interaction, num: str):
-    bot.music.playlist.remove(bot.music.playlist[int(num) + 1])
-    embed = discord.Embed(title="플레이리스트", description="곡이 삭제 되었습니다.")
-    for song in bot.music.playlist:
-        embed.add_field(name=song["name"], value=song["url"], inline=False)
-    await interaction.response.send_message(embed=embed)
-
-
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="플레이리스트", description="플레이리스트를 보여줍니다.")
-async def music_playlist(interaction: discord.Interaction):
-    embed = discord.Embed(title="플레이리스트")
-    for song in bot.music.playlist:
-        embed.add_field(name=song["name"], value=song["url"], inline=False)
-    await interaction.response.send_message(embed=embed)
-
-
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="일시정지", description="노래를 일시정지합니다.")
-async def music_pause(interaction: discord.Interaction):
-    bot.music.pause()
-    await interaction.response.send_message("일시정지")
-
-
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="스킵", description="노래를 스킵합니다.")
-async def music_skip(interaction: discord.Interaction):
-    bot.music.stop()
-    embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.")
-    for song in bot.music.playlist:
-        embed.add_field(name=song["name"], value=song["url"], inline=False)
-    await interaction.response.send_message(embed=embed)
-
-# 매개변수를 lowercase로 작성하지 않으면 error 발생
-
+@ tree.command(guild=discord.Object(id=1038138701961769021), name="노래", description="노래관련 명령어를 실행합니다.")
+@ app_commands.describe(commands="명령어")
+@ app_commands.choices(commands=[
+    app_commands.Choice(name="추가", value=1),
+    app_commands.Choice(name="삭제", value=2),
+    app_commands.Choice(name="재생", value=3),
+    app_commands.Choice(name="일시정지", value=4),
+    app_commands.Choice(name="스킵", value=5),
+    app_commands.Choice(name="플레이리스트", value=6)
+])
+async def music(interaction: discord.Interaction, commands: app_commands.Choice[int]):
+    match commands.name:
+        case "추가":
+            await interaction.response.send_modal(MusicAddModal())
+        case "삭제":
+            await interaction.response.send_modal(MusicDelModal())
+        case "재생":
+            await interaction.response.defer()
+            await bot.music.connect(interaction.user.voice.channel)
+            bot.music.play()
+            await interaction.followup.send("재생")
+        case "일시정지":
+            bot.music.pause()
+            await interaction.response.send_message("일시정지")
+        case "스킵":
+            bot.music.stop()
+            embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.")
+            for song in bot.music.playlist:
+                embed.add_field(name=song["name"], value=song["url"], inline=False)
+            await interaction.response.send_message(embed=embed)
+        case "플레이리스트":
+            embed = discord.Embed(title="플레이리스트")
+            for song in bot.music.playlist:
+                embed.add_field(name=song["name"], value=song["url"], inline=False)
+            await interaction.response.send_message(embed=embed)
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다.")
 async def title(interaction: discord.Interaction, username: str, title_name: str):
@@ -658,7 +662,7 @@ async def stock_user_create(interaction: discord.Interaction, username: str):
         "userName": username,
         "money": 0,
         "rank": 0,
-        "stocks": defaultdict(int)
+        "stocks": {}
     })
     await interaction.response.send_message("생성 완료")
 
