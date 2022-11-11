@@ -44,6 +44,7 @@ pip install youtube_dl
 pip install hanspell
 pip install discord-ext-bot
 pip install discord-timers -U
+pip install pynacl
 ```
 ## 📖 License
 ```
