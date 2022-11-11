@@ -24,14 +24,16 @@
 
 ## ❓ About
 지누봇은 당신의 디스코드 채널에 다양한 기능들을 제공합니다 ! 
-## ❗ Features
-* **🎵Music**:
-* **🎮Game**: 
-* **🏅Level**:
-* **🎀Title**:
-* **📆TimeManager**:
-* **👨‍👨ChatManager**:
-* **✅CheckGrammar**:
+## ❗ Features 
+`this` ⇨ 앞에 /추가하면 사용가능합니다 !
+* **🎵Music**: `곡추가` `곡삭제` `재생` `플레이리스트` `일시정지` `스킵`
+* **🎮Game**:  <br>
+↳     **/끝말잇기** : `끝말잇기생성` `끝말잇기방` `끝말잇기참가` `끝말잇기시작`  <br>
+↳     **/주식게임** : `주식생성` `주식유저생성` `주식현황` `구매` `판매` `지갑`
+* **🏅Level**: `경험치`
+* **🎀Title**: `칭호`
+* **📆TimeManager**: `알람`
+* **👨‍👨ChatManager**: Always awake `욕설방지`
 ## 📝 Install
 ```
 py -3 -m pip install -U discord.py
