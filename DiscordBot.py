@@ -434,7 +434,7 @@ async def _join(interaction: discord.Interaction, roomname: str):
         rooms.append(temp)
         await interaction.response.send_message(embed = discord.Embed(title = '끝말잇기 참가 완료', description=f"{interaction.user}님", color = 0xeeafaf))
     else:
-        await interaction.response.send_message(embed = discord.Embed(title = '찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color = 0xeeafaf)) 
+        await interaction.response.send_message(embed = discord.Embed(title = '이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color = 0xeeafaf)) 
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기시작", description="입력된 방의 끝말잇기게임를 시작합니다.")
@@ -445,10 +445,13 @@ async def _start(interaction: discord.Interaction, roomname: str):
         if room.name == roomname:
             isroom == True
             room.is_playing = True
-            await interaction.response.send_message(embed = discord.Embed(title = "끝말잇기 시작", description="{room.user_list[0]}님부터 시작해 주세요", color = 0xeeafaf))
+            await interaction.response.send_message(embed = discord.Embed(title = "끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color = 0xeeafaf))
             return
         await interaction.response.send_message(embed = discord.Embed(title = "시작하지 못해요 ...", description="참가 먼저 해주세요", color = 0xeeafaf))
 
+@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
+async def _room_list(interaction: discord.Interaction):
+    pass
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
 async def grammer(interaction: discord.Interaction, msg: str):
