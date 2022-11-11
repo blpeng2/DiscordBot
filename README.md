@@ -35,13 +35,16 @@
 ## 📝 Install
 #### in windows
 ```
+py -3 -m pip install -U discord.py
+pip install pymongo
+pip install python-dotenv
+pip install requests
+pip install youtube_dl
 pip install hanspell
 pip install discord-ext-bot
+pip install discord-timers -U
 ```
 ## 📖 License
-
-## 📜 Credits
-
 ```
 MIT License
 
@@ -64,3 +67,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+
+## 📜 Credits
+
