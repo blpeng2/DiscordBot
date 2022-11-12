@@ -14,7 +14,7 @@ from hanspell import spell_checker
 load_dotenv()
 apikey = os.getenv('APIKEY')
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
-
+COLOR = 0x33CCFF
 
 class Timer():
     @classmethod
@@ -35,9 +35,7 @@ class Timer():
         else:
             date = datetime.datetime.today()
             arrayOfTime = time.split()
-            date.replace(second=0)
-            date.replace(minute=0)
-            date.replace(hour=0)
+            date.replace(second=0, minute=0, hour=0)
             for __time in arrayOfTime:
                 if __time[-1] == "초":
                     date += datetime.timedelta(seconds=int(__time[:-1]))
@@ -93,7 +91,7 @@ class Music():
         if self.__voiceClient.is_paused():
             self.__voiceClient.resume()
         elif self.playlist:
-            self.__voiceClient.play(self.playlist[0]["audio"], after=self.play)
+            self.__voiceClient.play(self.playlist[0]["audio"], after=lambda e: self.play())
             self.playlist.popleft()
 
     def pause(self):
@@ -266,35 +264,54 @@ class Bot(discord.Client):
             await tree.sync(guild=discord.Object(id=1038138701961769021))
             self.synced = True
         print(f"we have logged in as {self.user}.")
+    
+    async def on_member_join(self, member: discord.Member):
+        DB.createStatusUser(member=member)
+        DB.createStockUser(member=member)
+
+    async def on_member_remove(self, member: discord.Member):
+        DB.removeStatusUser(member=member)
+        DB.removeStockUser(member=member)
 
     async def on_message(self, msg: discord.Message):
-        if msg.author == bot.user:
+        if msg.author.bot:
             return
-        if ChatManager.checkAbuse(msg.content):
-            await msg.channel.purge(limit=1)
-            embed = discord.Embed(title="욕설 금지")
-            embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
-            await msg.channel.send(embed=embed)
-            return
+
         for room in rooms:
             if room.is_playing and (msg.author == room.last_user):
                 result = endtalk.checkword(msg.content, room)
-                embed = discord.Embed(title="끝말잇기", color=0x33CCFF)
+                embed = discord.Embed(title="끝말잇기", color=COLOR)
                 if result != '':
                     embed.add_field(name=f"{room.history[len(room.history) - 2]} > {room.history[-1]}", value=result, inline=False)
                     await msg.channel.send(embed=embed)
                 else:
                     embed.add_field(name="없는 단어입니다.")
                     await msg.channel.send(embed=embed)
+
+        if ChatManager.checkAbuse(msg.content):
+            await msg.channel.purge(limit=1)
+            embed = discord.Embed(title="욕설 금지", color=COLOR)
+            embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
+            await msg.channel.send(embed=embed)
+            return
         # DB에 유저가 없으면 user.userName = None 
         user = Status(msg.author.name)
         if user.userName: user.addExp(10)
 
-    async def on_reminder(self, channel_id, author_id, text):
+    async def on_reminder(self, channel_id: int, author_id: int, text: str):
         channel = bot.get_channel(channel_id)
+<<<<<<< HEAD
         embed = discord.Embed(title="알람", color=0x33CCFF)
         embed.add_field(name="<@{0}>님, 알람입니다.", value="{1}", )
         await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
+=======
+        user: discord.User = channel.guild.get_member(author_id)
+        now = datetime.datetime.now()
+        embed = discord.Embed(color=COLOR)
+        embed.add_field(name=f"현재 시각", value=f"{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}", inline=False)
+        embed.add_field(name=f"메모 내용", value=f"{text}")
+        await channel.send(embed=embed, content=f"{user.mention}님 알람입니다.")
+>>>>>>> 8d4e8eafaa5fc2f176250479d65cef4b99129741
 
 
 bot = Bot()
@@ -318,6 +335,7 @@ class ChatManager():
             }
         }
         response = requests.post(API_URL, headers=headers, json=payload).json()
+        print(response)
         if response[0][0]["label"] == "hate":
             return True
         return False
@@ -381,16 +399,28 @@ class DB():
             })
 
     @classmethod
-    def createStatusUser(self, interaction: discord.Interaction):
+    def createStatusUser(self, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.insert_one({
-            "userId": interaction.user.id,
-            "userName": interaction.user.name,
+            "userId": member.id,
+            "userName": member.name,
             "exp": 0,
             "level": 0,
             "rank": 0
         })
+
+    @classmethod
+    def removeStatusUser(self, member: discord.Member):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["User"]
+        db.delete_one({"userId": member.id})
+    
+    @classmethod
+    def removeStockUser(self, member: discord.Member):
+        client = MongoClient(os.getenv("MONGO"))
+        db = client["Discord"]["StockUser"]
+        db.delete_one({"userId": member.id})
 
     @ classmethod
     def refreshExpRanking(self):
@@ -471,15 +501,15 @@ class DB():
         })
 
     @classmethod
-    def createStockUser(self, post):
+    def createStockUser(self, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.insert_one({
-            "userId": post["userId"],
-            "userName": post["userName"],
-            "money": post["money"],
-            "rank": post["rank"],
-            "stocks": post["stocks"]
+            "userId": member.id,
+            "userName": member.name,
+            "money": 0,
+            "rank": 0,
+            "stocks": {}
         })
 
 class Title():
@@ -573,29 +603,41 @@ async def grammer(interaction: discord.Interaction, msg: str):
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
 async def remind(interaction: discord.Interaction, time: str, text: str):
-    timers.Timer(bot, "reminder", Timer.calc(time), args=(
+    __time = Timer.calc(time)
+    timers.Timer(bot, "reminder", __time, args=(
         interaction.channel.id, interaction.user.id, text)).start()
-    await interaction.response.send_message("알람설정 완료")
+    embed = discord.Embed(color=COLOR)
+    embed.add_field(name="✅ 알람설정 완료", value=f"설정된 시간: {__time.year}-{__time.month}-{__time.day} {__time.hour}:{__time.minute}:{__time.second}")
+    await interaction.response.send_message(embed=embed)
+
 
 class MusicAddModal(discord.ui.Modal, title="노래 추가"):
     url = discord.ui.TextInput(label="url")
-
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
         await bot.music.add(self.url.value)
-        embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다.")
+        embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었어요.", color=COLOR)
         for song in bot.music.playlist:
             embed.add_field(name=song["name"], value=song["url"], inline=False)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-class MusicDelModal(discord.ui.Modal, title="노래 삭제"):
-    num = discord.ui.TextInput(label="num")
-
-    async def on_submit(self, interaction: discord.Interaction) -> None:
-        bot.music.playlist.remove(bot.music.playlist[int(self.num.value) + 1])
-        embed = discord.Embed(title="플레이리스트", description="곡이 삭제 되었습니다.")
+class MusicDelSelect(discord.ui.Select):
+    def __init__(self) -> None:
+        options = [discord.SelectOption(label=f"#{idx}. {song['name']}") for idx, song in enumerate(bot.music.playlist)]
+        super().__init__(options=options)
+    async def callback(self, interaction: discord.Interaction):
         for song in bot.music.playlist:
-            embed.add_field(name=song["name"], value=song["url"], inline=False)
-        await interaction.response.send_message(embed=embed)
+            if self.values[0][4:] == song["name"]: 
+                bot.music.playlist.remove(song)
+                embed = discord.Embed(title="플레이리스트", description="노래가 삭제되었어요.", color=COLOR)
+                for song in bot.music.playlist:
+                    embed.add_field(name=song["name"], value=song["url"], inline=False)
+                return await interaction.response.send_message(embed=embed)
+
+class MusicDelView(discord.ui.View):
+    def __init__(self, *, timeout = 180):
+        super().__init__(timeout=timeout)
+        self.add_item(MusicDelSelect())
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="노래", description="노래관련 명령어를 실행합니다.")
 @ app_commands.describe(commands="명령어")
@@ -612,7 +654,9 @@ async def music(interaction: discord.Interaction, commands: app_commands.Choice[
         case "추가":
             await interaction.response.send_modal(MusicAddModal())
         case "삭제":
-            await interaction.response.send_modal(MusicDelModal())
+            if bot.music.playlist:
+                return await interaction.response.send_message(view=MusicDelView())
+            return await interaction.response.send_message("플레이리스트에 노래가 없어요.")
         case "재생":
             await interaction.response.defer()
             await bot.music.connect(interaction.user.voice.channel)
@@ -623,12 +667,12 @@ async def music(interaction: discord.Interaction, commands: app_commands.Choice[
             await interaction.response.send_message("일시정지")
         case "스킵":
             bot.music.stop()
-            embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.")
+            embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.", color=COLOR)
             for song in bot.music.playlist:
                 embed.add_field(name=song["name"], value=song["url"], inline=False)
             await interaction.response.send_message(embed=embed)
         case "플레이리스트":
-            embed = discord.Embed(title="플레이리스트")
+            embed = discord.Embed(title="플레이리스트", color=COLOR)
             for song in bot.music.playlist:
                 embed.add_field(name=song["name"], value=song["url"], inline=False)
             await interaction.response.send_message(embed=embed)
@@ -641,20 +685,34 @@ async def title(interaction: discord.Interaction, username: str, title_name: str
     user = discord.utils.find(
         lambda m: m.name == username, interaction.guild.members)
 
-    # 칭호가 존재하지 않을 경우 예외처리
+    embed = discord.Embed(color=COLOR)
+    # 칭호가 존재하지 않을 경우
     if role is None:
-        await interaction.response.send_message("칭호가 존재하지 않습니다", ephemeral=True)
+        embed.add_field(name="🚫 ERROR", value=f"그런 칭호는 존재하지 않아요.")
+        embed.set_footer(text=f"입력한 칭호: {title_name}")
+        await interaction.response.send_message(embed=embed)
         return
 
+    # 유저가 존재하지 않을 경우
     if user is None:
-        await interaction.response.send_message("유저가 존재하지 않습니다.", ephemeral=True)
+        embed.add_field(name="🚫 ERROR", value=f"그런 사람은 존재하지 않아요. {username}")
+        embed.set_footer(text=f"입력한 유저: {username}")
+        await interaction.response.send_message(embed=embed)
+        return
 
+    # 칭호 제거
     if role in user.roles:
         await Title.removeTitle(user, role)
-        await interaction.response.send_message("칭호를 제거했습니다.", ephemeral=True)
+        embed.add_field(name="✅ SUCCESS", value="칭호를 제거했어요.")
+        embed.set_footer(text=f"제거된 유저: {username}, 제거한 칭호: {title_name}")
+        await interaction.response.send_message(embed=embed)
+    # 칭호 추가
     else:
         await Title.addTitle(user, role)
-        await interaction.response.send_message("칭호를 추가했습니다.", ephemeral=True)
+        embed.add_field(name="✅ SUCCESS", value="칭호를 추가했어요.")
+        embed.set_footer(text=f"입력한 유저이름: {username}")
+        embed.set_footer(text=f"추가된 유저: {username}, 추가한 칭호: {title_name}")
+        await interaction.response.send_message(embed=embed)
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다.")
@@ -662,7 +720,7 @@ async def status(interaction: discord.Interaction, username: str):
     embed = discord.Embed(title="경험치")
     # 유저가 없는 경우
     if not discord.utils.find(lambda m: m.name == username, interaction.guild.members):
-        embed.add_field(name="🚫ERROR🚫", value="그런 사람은 존재하지 않아요.")
+        embed.add_field(name="🚫 ERROR", value="그런 사람은 존재하지 않아요.")
     else:
         DB.refreshExpRanking()
         user = Status(username)
@@ -671,10 +729,10 @@ async def status(interaction: discord.Interaction, username: str):
         embed.add_field(name="rank", value=f"{user.rank}등", inline=False)
     await interaction.response.send_message(embed=embed)
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="유저등록", description="status 유저를 등록합니다.")
-async def status_create_user(interaction: discord.Interaction):
-    DB.createStatusUser(interaction)
-    await interaction.response.send_message("생성되었습니다.")
+# @ tree.command(guild=discord.Object(id=1038138701961769021), name="유저등록", description="status 유저를 등록합니다.")
+# async def status_create_user(interaction: discord.Interaction):
+#     DB.createStatusUser(interaction)
+#     await interaction.response.send_message("생성되었습니다.")
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="구매", description="구매")
 async def stock_buy(interaction: discord.Interaction, stockname: str):
@@ -719,17 +777,17 @@ async def stock_create(interaction: discord.Interaction, stockname: str, price: 
     await interaction.response.send_message("생성되었습니다.")
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식유저생성", description="주식유저생성")
-async def stock_user_create(interaction: discord.Interaction, username: str):
-    user = discord.utils.find(
-        lambda m: m.name == username, interaction.guild.members)
-    DB.createStockUser({
-        "userId": user.id,
-        "userName": username,
-        "money": 0,
-        "rank": 0,
-        "stocks": {}
-    })
-    await interaction.response.send_message("생성 완료")
+# @ tree.command(guild=discord.Object(id=1038138701961769021), name="주식유저생성", description="주식유저생성")
+# async def stock_user_create(interaction: discord.Interaction, username: str):
+#     user = discord.utils.find(
+#         lambda m: m.name == username, interaction.guild.members)
+#     DB.createStockUser({
+#         "userId": user.id,
+#         "userName": username,
+#         "money": 0,
+#         "rank": 0,
+#         "stocks": {}
+#     })
+#     await interaction.response.send_message("생성 완료")
 
 bot.run(os.environ["BOT"])
