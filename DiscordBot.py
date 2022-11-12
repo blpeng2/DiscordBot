@@ -166,23 +166,49 @@ class EndTalk():
         else:
             val = []
         return val
-
-    def checkword(self, query, room):
-        room.last_word = endtalk.convert(query[0])
+    def checkexists(self, query):
         url = 'https://krdict.korean.go.kr/api/search?key=' + apikey + '&part=word&sort=popular&num=100&pos=1&q=' + query
         response = requests.get(url, verify=False)
         ans = ''
         words = EndTalk.midReturn_all(response.text, '<item>', '</item>')
         for w in words:
-            if not (w in room.history):
-                word = EndTalk.midReturn(w, '<word>', '</word>')
-                pos = EndTalk.midReturn(w, '<pos>', '</pos>')
-                if len(word) > 1 and pos == '명사' and word == query:
-                    ans = w
-        if len(ans) > 0:
+            word = EndTalk.midReturn(w, '<word>', '</word>')
+            pos = EndTalk.midReturn(w, '<pos>', '</pos>')
+            if len(word) > 1 and pos == '명사' and word == query:
+                ans = w
+        if len(ans)>0:
             return EndTalk.midReturn(ans, '<word>', '</word>')
         else:
             return ''
+            
+    def checkword(self, query, room):
+        result = endtalk.checkexists(query)
+        if query[0] == endtalk.convert(room.last_word):
+            print(endtalk.convert(query[0]))
+            room.last_word = endtalk.convert(query[0])
+
+        if len(result) > 0:
+            if len(result) == 1:
+                return "적어도 두 글자가 되어야 합니다"
+            if result in room.history:
+                return "이미 사용한 단어입니다."
+            if result[len(result)-1] in blacklist:
+                return "아.. 좀 치사한데요.."
+            if room.last_word != result[0] and room.last_word != "":
+                return f"{room.last_word}(으)로 시작하는 단어를 입력해 주십시오."
+            if room.user_list.index(room.last_user) - 1 == len(room.user_list):
+                room.last_user = room.user_list[0]
+            else:
+                room.last_user = room.user_list[room.user_list.index(room.last_user)]
+            room.history.append(query)
+            room.last_word = result[-1]
+            if room.last_word == '':
+                return f"{room.last_word}(으)로 시작하는 단어 {room.last_user}님 차례!"
+            else:
+                return f"{room.last_user}님 차례!"
+        else:      
+            return ''
+
     def convert(self, rear):
         convertList = {"라":"나","락":"낙","란":"난","랄":"날",
         "람":"남","랍":"납","랏":"낫","랑":"낭",
@@ -238,26 +264,11 @@ class Bot(discord.Client):
         for room in rooms:
             if room.is_playing and (msg.author == room.last_user):
                 result = endtalk.checkword(msg.content, room)
-                if len(result) == 1:
-                    await msg.channel.send("적어도 두 글자가 되어야 합니다")
-                elif result == '':
-                    await msg.channel.send("없는 단어입니다.")
-                elif result in room.history:
-                    await msg.channel.send("이미 사용한 단어입니다.")
-                elif result[len(result)-1] in blacklist:
-                    await msg.channel.send("아.. 좀 치사한데요..")
-                elif room.last_word != result[0] and room.last_word != "":
-                    await msg.channel.send(f"{room.last_word}(으)로 시작하는 단어를 입력해 주십시오.")
+                if result != '':
+                    await msg.channel.send(f"{room.history[len(room.history) - 2]} > {room.history[-1]}")
+                    await msg.channel.send(result)
                 else:
-                    if room.user_list.index(room.last_user) - 1 == len(room.user_list):
-                        room.last_user = room.user_list[0]
-                    else:
-                        room.last_user = room.user_list[room.user_list.index(
-                            room.last_user)]
-                    room.history.append(msg.content)
-                    room.last_word = result[-1]
-                    print(room.last_word)
-                    await msg.channel.send(f"{result} > 단어 받았습니다. {room.last_word}(으)로 시작하는 단어 {room.last_user}님 차례!")
+                     await msg.channel.send("없는 단어입니다.")
         # DB에 유저가 없으면 user.userName = None 
         user = Status(msg.author.name)
         if user.userName: user.addExp(10)
@@ -529,6 +540,7 @@ async def _room_list(interaction: discord.Interaction):
     roomnamelist = []
     for room in rooms:
         roomnamelist.append(room.name)
+        roomnamelist.append(room.user_list)
     await interaction.response.send_message(embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0xeeafaf))
 
 
