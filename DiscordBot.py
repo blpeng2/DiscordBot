@@ -270,12 +270,6 @@ class Bot(discord.Client):
     async def on_message(self, msg: discord.Message):
         if msg.author == bot.user:
             return
-        if ChatManager.checkAbuse(msg.content):
-            await msg.channel.purge(limit=1)
-            embed = discord.Embed(title="욕설 금지")
-            embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
-            await msg.channel.send(embed=embed)
-            return
         for room in rooms:
             if room.is_playing and (msg.author == room.last_user):
                 result = endtalk.checkword(msg.content, room)
@@ -284,13 +278,22 @@ class Bot(discord.Client):
                     await msg.channel.send(result)
                 else:
                      await msg.channel.send("없는 단어입니다.")
+        if ChatManager.checkAbuse(msg.content):
+            await msg.channel.purge(limit=1)
+            embed = discord.Embed(title="욕설 금지")
+            embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
+            await msg.channel.send(embed=embed)
+            return
         # DB에 유저가 없으면 user.userName = None 
         user = Status(msg.author.name)
         if user.userName: user.addExp(10)
 
     async def on_reminder(self, channel_id, author_id, text):
         channel = bot.get_channel(channel_id)
-        await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
+        user: discord.User = bot.get_user(id = author_id)
+        embed = discord.Embed(title="알람")
+        embed.add_field(name=f"{user.mention}님", value=f"{text}")
+        await channel.send(embed=embed)
 
 
 bot = Bot()
@@ -576,13 +579,13 @@ async def remind(interaction: discord.Interaction, time: str, text: str):
 
 class MusicAddModal(discord.ui.Modal, title="노래 추가"):
     url = discord.ui.TextInput(label="url")
-
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
         await bot.music.add(self.url.value)
         embed = discord.Embed(title="플레이리스트", description="곡이 추가 되었습니다.")
         for song in bot.music.playlist:
             embed.add_field(name=song["name"], value=song["url"], inline=False)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 class MusicDelModal(discord.ui.Modal, title="노래 삭제"):
     num = discord.ui.TextInput(label="num")
