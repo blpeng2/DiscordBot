@@ -30,8 +30,23 @@ class Timer():
                     date += datetime.timedelta(minutes=int(__time[:-1]))
                 elif __time[-2:] == "시간":
                     date += datetime.timedelta(hours=int(__time[:-2]))
+                elif __time[-1:] == "시":
+                    date += datetime.timedelta(hours=int(__time[:-1]))
         else:
-            pass
+            date = datetime.datetime.today()
+            arrayOfTime = time.split()
+            date.replace(second=0)
+            date.replace(minute=0)
+            date.replace(hour=0)
+            for __time in arrayOfTime:
+                if __time[-1] == "초":
+                    date += datetime.timedelta(seconds=int(__time[:-1]))
+                elif __time[-1] == "분":
+                    date += datetime.timedelta(minutes=int(__time[:-1]))
+                elif __time[-2:] == "시간":
+                    date += datetime.timedelta(hours=int(__time[:-2]))
+                elif __time[-1:] == "시":
+                    date += datetime.timedelta(hours=int(__time[:-1]))
         date -= datetime.timedelta(hours=9)
         return date
 
