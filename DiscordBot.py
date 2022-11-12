@@ -264,11 +264,13 @@ class Bot(discord.Client):
         for room in rooms:
             if room.is_playing and (msg.author == room.last_user):
                 result = endtalk.checkword(msg.content, room)
+                embed = discord.Embed(title="끝말잇기", color=0x33CCFF)
                 if result != '':
-                    await msg.channel.send(f"{room.history[len(room.history) - 2]} > {room.history[-1]}")
-                    await msg.channel.send(result)
+                    embed.add_field(name=f"{room.history[len(room.history) - 2]} > {room.history[-1]}", value=result, inline=False)
+                    await msg.channel.send(embed=embed)
                 else:
-                     await msg.channel.send("없는 단어입니다.")
+                    embed.add_field(name="없는 단어입니다.")
+                    await msg.channel.send(embed=embed)
         # DB에 유저가 없으면 user.userName = None 
         user = Status(msg.author.name)
         if user.userName: user.addExp(10)
@@ -488,9 +490,9 @@ async def _create(interaction: discord.Interaction, roomname: str):
         temp = Room(roomname)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=0x33CCFF))
     else:
-        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기참가", description="끝말잇기방에 참가합니다.")
@@ -505,9 +507,9 @@ async def _join(interaction: discord.Interaction, roomname: str):
         temp = rooms.pop(roomnumber)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=0x33CCFF))
     else:
-        await interaction.response.send_message(embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기시작", description="입력된 방의 끝말잇기게임를 시작합니다.")
@@ -518,9 +520,9 @@ async def _start(interaction: discord.Interaction, roomname: str):
             isroom == True
             room.is_playing = True
             room.last_user = room.user_list[0]
-            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0xeeafaf))
+            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0x33CCFF))
             return
-        await interaction.response.send_message(embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기종료", description="입력된 방의 끝말잇기게임를 종료합니다.")
@@ -530,9 +532,9 @@ async def _end(interaction: discord.Interaction, roomname: str):
         if room.name == roomname:
             isroom == True
             room.is_playing = False
-            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=0xeeafaf))
+            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=0x33CCFF))
             return
-        await interaction.response.send_message(embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=0xeeafaf))
+        await interaction.response.send_message(embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
@@ -541,7 +543,7 @@ async def _room_list(interaction: discord.Interaction):
     for room in rooms:
         roomnamelist.append(room.name)
         roomnamelist.append(room.user_list)
-    await interaction.response.send_message(embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0xeeafaf))
+    await interaction.response.send_message(embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0x33CCFF))
 
 
 @ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
