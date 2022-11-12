@@ -6,7 +6,6 @@ from collections import deque, defaultdict
 import requests
 import os
 from dotenv import load_dotenv
-import hgtk
 import datetime
 from discord.ext import timers
 from hanspell import spell_checker
@@ -16,9 +15,10 @@ apikey = os.getenv('APIKEY')
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
 COLOR = 0x33CCFF
 
+
 class Timer():
     @classmethod
-    def calc(self, time):
+    def calc(cls, time):
         if time[-1] == "뒤":
             time = time[:-1].strip()
             arrayOfTime = time.split()
@@ -128,21 +128,21 @@ class StockUser():
 
 class StockGame():
     @classmethod
-    def buy(self, user: StockUser, stock: Stock):
+    def buy(cls, user: StockUser, stock: Stock):
         stockUser = StockUser(user.userName)
         stockUser.money -= stock.price
         stockUser.stocks[stock.stockName] += 1
         DB.updateStockUser(stockUser)
 
     @classmethod
-    def sell(self, user: StockUser, stock: Stock):
+    def sell(cls, user: StockUser, stock: Stock):
         stockUser = StockUser(user.userName)
         stockUser.money += stock.price
         stockUser.stocks[stock.stockName] -= 1
         DB.updateStockUser(stockUser)
 
 
-class Room():
+class Room:
     def __init__(self, name) -> None:
         self.name = name
         self.is_playing = False
@@ -158,18 +158,19 @@ class Room():
 rooms = []
 
 
-class EndTalk():
+class EndTalk:
 
     # string list에서 단어, 품사와 같은 요소들을 추출할때 사용됩니다
-    def midReturn(val, s, e):
+    def midReturn(self, val, s, e):
         if s in val:
-            val = val[val.find(s)+len(s):]
+            val = val[val.find(s) + len(s):]
             if e in val:
                 val = val[:val.find(e)]
         return val
+
     # string에서 XML 등의 요소를 분석할때 사용됩니다
 
-    def midReturn_all(val, s, e):
+    def midReturn_all(self, val, s, e):
         if s in val:
             tmp = val.split(s)
             val = []
@@ -179,6 +180,7 @@ class EndTalk():
         else:
             val = []
         return val
+
     def checkexists(self, query):
         url = 'https://krdict.korean.go.kr/api/search?key=' + apikey + '&part=word&sort=popular&num=100&pos=1&q=' + query
         response = requests.get(url, verify=False)
@@ -189,11 +191,11 @@ class EndTalk():
             pos = EndTalk.midReturn(w, '<pos>', '</pos>')
             if len(word) > 1 and pos == '명사' and word == query:
                 ans = w
-        if len(ans)>0:
+        if len(ans) > 0:
             return EndTalk.midReturn(ans, '<word>', '</word>')
         else:
             return ''
-            
+
     def checkword(self, query, room):
         result = endtalk.checkexists(query)
         if query[0] == endtalk.convert(room.last_word):
@@ -205,7 +207,7 @@ class EndTalk():
                 return "적어도 두 글자가 되어야 합니다"
             if result in room.history:
                 return "이미 사용한 단어입니다."
-            if result[len(result)-1] in blacklist:
+            if result[len(result) - 1] in blacklist:
                 return "아.. 좀 치사한데요.."
             if room.last_word != result[0] and room.last_word != "":
                 return f"{room.last_word}(으)로 시작하는 단어를 입력해 주십시오."
@@ -219,30 +221,30 @@ class EndTalk():
                 return f"{room.last_word}(으)로 시작하는 단어 {room.last_user}님 차례!"
             else:
                 return f"{room.last_user}님 차례!"
-        else:      
+        else:
             return ''
 
     def convert(self, rear):
-        convertList = {"라":"나","락":"낙","란":"난","랄":"날",
-        "람":"남","랍":"납","랏":"낫","랑":"낭",
-        "략":"약","량":"양","렁":"넝","려":"여",
-        "녀":"여","력":"역","녁":"역","련":"연",
-        "년":"연","렬":"열","렴":"염","념":"염",
-        "렵":"엽","령":"영","녕":"영","로":"노",
-        "록":"녹","론":"논","롤":"놀","롬":"놈",
-        "롭":"놉","롯":"놋","롱":"농","료":"요",
-        "뇨":"요","룡":"용","뇽":"용","루":"누",
-        "룩":"눅","룬":"눈","룰":"눌","룸":"눔",
-        "룻":"눗","룽":"눙","류":"유","뉴":"유",
-        "륙":"육","률":"율","르":"느","륵":"늑",
-        "른":"는","를":"늘","름":"늠","릅":"늡",
-        "릇":"늣","릉":"능","래":"내","랙":"낵",
-        "랜":"낸","랠":"낼","램":"냄","랩":"냅",
-        "랫":"냇","랭":"냉","례":"예","뢰":"뇌",
-        "리":"이","니":"이","린":"인","닌":"인",
-        "릴":"일","닐":"일","림":"임","님":"임",
-        "립":"입","닙":"입","릿":"잇","닛":"잇",
-        "링":"잉","닝":"잉"}
+        convertList = {"라": "나", "락": "낙", "란": "난", "랄": "날",
+                       "람": "남", "랍": "납", "랏": "낫", "랑": "낭",
+                       "략": "약", "량": "양", "렁": "넝", "려": "여",
+                       "녀": "여", "력": "역", "녁": "역", "련": "연",
+                       "년": "연", "렬": "열", "렴": "염", "념": "염",
+                       "렵": "엽", "령": "영", "녕": "영", "로": "노",
+                       "록": "녹", "론": "논", "롤": "놀", "롬": "놈",
+                       "롭": "놉", "롯": "놋", "롱": "농", "료": "요",
+                       "뇨": "요", "룡": "용", "뇽": "용", "루": "누",
+                       "룩": "눅", "룬": "눈", "룰": "눌", "룸": "눔",
+                       "룻": "눗", "룽": "눙", "류": "유", "뉴": "유",
+                       "륙": "육", "률": "율", "르": "느", "륵": "늑",
+                       "른": "는", "를": "늘", "름": "늠", "릅": "늡",
+                       "릇": "늣", "릉": "능", "래": "내", "랙": "낵",
+                       "랜": "낸", "랠": "낼", "램": "냄", "랩": "냅",
+                       "랫": "냇", "랭": "냉", "례": "예", "뢰": "뇌",
+                       "리": "이", "니": "이", "린": "인", "닌": "인",
+                       "릴": "일", "닐": "일", "림": "임", "님": "임",
+                       "립": "입", "닙": "입", "릿": "잇", "닛": "잇",
+                       "링": "잉", "닝": "잉"}
 
         if rear in convertList:
             return convertList[rear]
@@ -264,7 +266,7 @@ class Bot(discord.Client):
             await tree.sync(guild=discord.Object(id=1038138701961769021))
             self.synced = True
         print(f"we have logged in as {self.user}.")
-    
+
     async def on_member_join(self, member: discord.Member):
         DB.createStatusUser(member=member)
         DB.createStockUser(member=member)
@@ -282,11 +284,12 @@ class Bot(discord.Client):
                 result = endtalk.checkword(msg.content, room)
                 embed = discord.Embed(title="끝말잇기", color=COLOR)
                 if result != '':
-                    embed.add_field(name=f"{room.history[len(room.history) - 2]} > {room.history[-1]}", value=result, inline=False)
+                    embed.add_field(name=f"{room.history[len(room.history) - 2]} > {room.history[-1]}", value=result,
+                                    inline=False)
                     await msg.channel.send(embed=embed)
                 else:
                     embed.add_field(name="없는 단어입니다.")
-                    await msg.channel.send(embed=embed)
+                    return await msg.channel.send(embed=embed)
 
         if ChatManager.checkAbuse(msg.content):
             await msg.channel.purge(limit=1)
@@ -300,18 +303,13 @@ class Bot(discord.Client):
 
     async def on_reminder(self, channel_id: int, author_id: int, text: str):
         channel = bot.get_channel(channel_id)
-<<<<<<< HEAD
-        embed = discord.Embed(title="알람", color=0x33CCFF)
-        embed.add_field(name="<@{0}>님, 알람입니다.", value="{1}", )
-        await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
-=======
-        user: discord.User = channel.guild.get_member(author_id)
+        user: discord.Member = channel.guild.get_member(author_id)
         now = datetime.datetime.now()
         embed = discord.Embed(color=COLOR)
-        embed.add_field(name=f"현재 시각", value=f"{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}", inline=False)
+        embed.add_field(name=f"현재 시각", value=f"{now.year}-{now.month}-{now.day} {now.hour}:{now.minute}:{now.second}",
+                        inline=False)
         embed.add_field(name=f"메모 내용", value=f"{text}")
         await channel.send(embed=embed, content=f"{user.mention}님 알람입니다.")
->>>>>>> 8d4e8eafaa5fc2f176250479d65cef4b99129741
 
 
 bot = Bot()
@@ -320,11 +318,11 @@ tree = app_commands.CommandTree(bot)
 
 class ChatManager():
     @classmethod
-    def checkGrammer(self, msg):
+    def checkGrammer(cls, msg):
         return spell_checker.check(msg)
 
-    @ classmethod
-    def checkAbuse(self, msg: str):
+    @classmethod
+    def checkAbuse(cls, msg: str):
         API_URL = os.getenv("NLP")
         headers = {
             "Authorization": os.getenv("MACHINE")}
@@ -376,15 +374,15 @@ class Status():
         return DB.getUser(self.userName)
 
 
-class DB():
+class DB:
     @classmethod
-    def getUser(self, userName) -> dict | None:
+    def getUser(cls, userName) -> dict | None:
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         return db.find_one({"userName": userName})
 
     @classmethod
-    def updateUser(self, status):
+    def updateUser(cls, status):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.replace_one(
@@ -399,7 +397,7 @@ class DB():
             })
 
     @classmethod
-    def createStatusUser(self, member: discord.Member):
+    def createStatusUser(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.insert_one({
@@ -411,19 +409,19 @@ class DB():
         })
 
     @classmethod
-    def removeStatusUser(self, member: discord.Member):
+    def removeStatusUser(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.delete_one({"userId": member.id})
-    
+
     @classmethod
-    def removeStockUser(self, member: discord.Member):
+    def removeStockUser(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.delete_one({"userId": member.id})
 
-    @ classmethod
-    def refreshExpRanking(self):
+    @classmethod
+    def refreshExpRanking(cls):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         users = []
@@ -444,7 +442,7 @@ class DB():
         return True
 
     @classmethod
-    def refreshStockUserRanking(self):
+    def refreshStockUserRanking(cls):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         users = []
@@ -465,7 +463,7 @@ class DB():
         return True
 
     @classmethod
-    def updateStockUser(self, stockUser: StockUser):
+    def updateStockUser(cls, stockUser: StockUser):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.replace_one(
@@ -480,19 +478,19 @@ class DB():
             })
 
     @classmethod
-    def getStock(self, stock: str):
+    def getStock(cls, stock: str):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["Stock"]
         return db.find_one({"stockName": stock})
 
     @classmethod
-    def getStocks(self):
+    def getStocks(cls):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["Stock"]
         return db.find()
 
     @classmethod
-    def createStock(self, post):
+    def createStock(cls, post):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["Stock"]
         db.insert_one({
@@ -501,7 +499,7 @@ class DB():
         })
 
     @classmethod
-    def createStockUser(self, member: discord.Member):
+    def createStockUser(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.insert_one({
@@ -512,16 +510,17 @@ class DB():
             "stocks": {}
         })
 
-class Title():
+
+class Title:
     def __init__(self) -> None:
         pass
 
-    @ classmethod
-    async def addTitle(self, user: discord.Member, title):
+    @classmethod
+    async def addTitle(cls, user: discord.Member, title):
         await user.add_roles(title)
 
-    @ classmethod
-    async def removeTitle(self, user: discord.Member, title):
+    @classmethod
+    async def removeTitle(cls, user: discord.Member, title):
         await user.remove_roles(title)
 
 
@@ -536,9 +535,11 @@ async def _create(interaction: discord.Interaction, roomname: str):
         temp = Room(roomname)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(
+            embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=0x33CCFF))
     else:
-        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(
+            embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기참가", description="끝말잇기방에 참가합니다.")
@@ -553,9 +554,11 @@ async def _join(interaction: discord.Interaction, roomname: str):
         temp = rooms.pop(roomnumber)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(
+            embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=0x33CCFF))
     else:
-        await interaction.response.send_message(embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(
+            embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기시작", description="입력된 방의 끝말잇기게임를 시작합니다.")
@@ -563,12 +566,14 @@ async def _start(interaction: discord.Interaction, roomname: str):
     isroom = False
     for room in rooms:
         if room.name == roomname:
-            isroom == True
+            isroom = True
             room.is_playing = True
             room.last_user = room.user_list[0]
-            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0x33CCFF))
+            await interaction.response.send_message(
+                embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0x33CCFF))
             return
-        await interaction.response.send_message(embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0x33CCFF))
+        await interaction.response.send_message(
+            embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기종료", description="입력된 방의 끝말잇기게임를 종료합니다.")
@@ -576,11 +581,12 @@ async def _end(interaction: discord.Interaction, roomname: str):
     isroom = False
     for room in rooms:
         if room.name == roomname:
-            isroom == True
+            isroom = True
             room.is_playing = False
             await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=0x33CCFF))
             return
-        await interaction.response.send_message(embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=0x33CCFF))
+        await interaction.response.send_message(
+            embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=0x33CCFF))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
@@ -589,30 +595,36 @@ async def _room_list(interaction: discord.Interaction):
     for room in rooms:
         roomnamelist.append(room.name)
         roomnamelist.append(room.user_list)
-    await interaction.response.send_message(embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0x33CCFF))
+    await interaction.response.send_message(
+        embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0x33CCFF))
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
 async def grammer(interaction: discord.Interaction, msg: str):
     msg = ChatManager.checkGrammer(msg)
     if msg.original != msg.checked:
-        await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='이렇게 바꾸는건 어떨까요 ?', description=f"{msg.original}\n  ➡{msg.checked}", color=0x00ff00))
+        await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='이렇게 바꾸는건 어떨까요 ?',
+                                                                                    description=f"{msg.original}\n  ➡{msg.checked}",
+                                                                                    color=0x00ff00))
     else:
-        await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='문법적 오류가 없습니다 !', color=0x00ff00))
+        await interaction.response.send_message(ephemeral=True,
+                                                embed=discord.Embed(title='문법적 오류가 없습니다 !', color=0x00ff00))
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
 async def remind(interaction: discord.Interaction, time: str, text: str):
     __time = Timer.calc(time)
     timers.Timer(bot, "reminder", __time, args=(
         interaction.channel.id, interaction.user.id, text)).start()
     embed = discord.Embed(color=COLOR)
-    embed.add_field(name="✅ 알람설정 완료", value=f"설정된 시간: {__time.year}-{__time.month}-{__time.day} {__time.hour}:{__time.minute}:{__time.second}")
+    embed.add_field(name="✅ 알람설정 완료",
+                    value=f"설정된 시간: {__time.year}-{__time.month}-{__time.day} {__time.hour}:{__time.minute}:{__time.second}")
     await interaction.response.send_message(embed=embed)
 
 
 class MusicAddModal(discord.ui.Modal, title="노래 추가"):
     url = discord.ui.TextInput(label="url")
+
     async def on_submit(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
         await bot.music.add(self.url.value)
@@ -621,27 +633,31 @@ class MusicAddModal(discord.ui.Modal, title="노래 추가"):
             embed.add_field(name=song["name"], value=song["url"], inline=False)
         await interaction.followup.send(embed=embed)
 
+
 class MusicDelSelect(discord.ui.Select):
     def __init__(self) -> None:
         options = [discord.SelectOption(label=f"#{idx}. {song['name']}") for idx, song in enumerate(bot.music.playlist)]
         super().__init__(options=options)
+
     async def callback(self, interaction: discord.Interaction):
         for song in bot.music.playlist:
-            if self.values[0][4:] == song["name"]: 
+            if self.values[0][4:] == song["name"]:
                 bot.music.playlist.remove(song)
                 embed = discord.Embed(title="플레이리스트", description="노래가 삭제되었어요.", color=COLOR)
                 for song in bot.music.playlist:
                     embed.add_field(name=song["name"], value=song["url"], inline=False)
                 return await interaction.response.send_message(embed=embed)
 
+
 class MusicDelView(discord.ui.View):
-    def __init__(self, *, timeout = 180):
+    def __init__(self, *, timeout=180):
         super().__init__(timeout=timeout)
         self.add_item(MusicDelSelect())
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="노래", description="노래관련 명령어를 실행합니다.")
-@ app_commands.describe(commands="명령어")
-@ app_commands.choices(commands=[
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="노래", description="노래관련 명령어를 실행합니다.")
+@app_commands.describe(commands="명령어")
+@app_commands.choices(commands=[
     app_commands.Choice(name="추가", value=1),
     app_commands.Choice(name="삭제", value=2),
     app_commands.Choice(name="재생", value=3),
@@ -677,7 +693,8 @@ async def music(interaction: discord.Interaction, commands: app_commands.Choice[
                 embed.add_field(name=song["name"], value=song["url"], inline=False)
             await interaction.response.send_message(embed=embed)
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다.")
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다.")
 async def title(interaction: discord.Interaction, username: str, title_name: str):
     role = discord.utils.find(
         lambda r: r.name == title_name, interaction.guild.roles)
@@ -715,7 +732,7 @@ async def title(interaction: discord.Interaction, username: str, title_name: str
         await interaction.response.send_message(embed=embed)
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다.")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="경험치", description="유저의 경험치 상태와 랭킹을 확인합니다.")
 async def status(interaction: discord.Interaction, username: str):
     embed = discord.Embed(title="경험치")
     # 유저가 없는 경우
@@ -729,12 +746,13 @@ async def status(interaction: discord.Interaction, username: str):
         embed.add_field(name="rank", value=f"{user.rank}등", inline=False)
     await interaction.response.send_message(embed=embed)
 
+
 # @ tree.command(guild=discord.Object(id=1038138701961769021), name="유저등록", description="status 유저를 등록합니다.")
 # async def status_create_user(interaction: discord.Interaction):
 #     DB.createStatusUser(interaction)
 #     await interaction.response.send_message("생성되었습니다.")
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="구매", description="구매")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="구매", description="구매")
 async def stock_buy(interaction: discord.Interaction, stockname: str):
     user = StockUser(interaction.user.name)
     stock = Stock(stockname)
@@ -742,7 +760,7 @@ async def stock_buy(interaction: discord.Interaction, stockname: str):
     await interaction.response.send_message("구매했습니다.")
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="판매", description="판매")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="판매", description="판매")
 async def stock_sell(interaction: discord.Interaction, stockname: str):
     user = StockUser(interaction.user.name)
     stock = Stock(stockname)
@@ -750,13 +768,13 @@ async def stock_sell(interaction: discord.Interaction, stockname: str):
     await interaction.response.send_message("판매했습니다.")
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="지갑", description="지갑")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="지갑", description="지갑")
 async def stock_wallet(interaction: discord.Interaction):
     user = StockUser(interaction.user.name)
     await interaction.response.send_message(user.money)
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식현황", description="주식현황")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="주식현황", description="주식현황")
 async def stock_stocks(interaction: discord.Interaction):
     stocks = DB.getStocks()
     arr = []
@@ -768,7 +786,7 @@ async def stock_stocks(interaction: discord.Interaction):
     await interaction.response.send_message(arr)
 
 
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식생성", description="주식생성")
+@tree.command(guild=discord.Object(id=1038138701961769021), name="주식생성", description="주식생성")
 async def stock_create(interaction: discord.Interaction, stockname: str, price: int):
     DB.createStock({
         "stockName": stockname,
