@@ -211,7 +211,7 @@ class EndTalk():
                 return "아.. 좀 치사한데요.."
             if room.last_word != result[0] and room.last_word != "":
                 return f"{room.last_word}(으)로 시작하는 단어를 입력해 주십시오."
-            if room.user_list.index(room.last_user) - 1 == len(room.user_list):
+            if room.user_list.index(room.last_user) == len(room.user_list):
                 room.last_user = room.user_list[0]
             else:
                 room.last_user = room.user_list[room.user_list.index(room.last_user)]
@@ -292,6 +292,8 @@ class Bot(discord.Client):
 
     async def on_reminder(self, channel_id, author_id, text):
         channel = bot.get_channel(channel_id)
+        embed = discord.Embed(title="알람", color=0x33CCFF)
+        embed.add_field(name="<@{0}>님, 알람입니다.", value="{1}", )
         await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
 
 
@@ -480,7 +482,6 @@ class DB():
             "stocks": post["stocks"]
         })
 
-
 class Title():
     def __init__(self) -> None:
         pass
@@ -516,8 +517,8 @@ async def _join(interaction: discord.Interaction, roomname: str):
     roomnumber = 0
     for room in rooms:
         if room.name == roomname:
-            isroom == True
-            roomnumber = rooms.index(room)
+            isroom = True
+            roomnumber = rooms.index(room) - 1
     if isroom:
         temp = rooms.pop(roomnumber)
         temp.user_list.append(interaction.user)
