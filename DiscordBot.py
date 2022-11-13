@@ -501,16 +501,6 @@ class DB():
 class Title():
     def __init__(self) -> None:
         pass
-
-<<<<<<< HEAD
-    @ classmethod
-    async def addTitle(self, user: discord.Member, title):
-        await user.add_roles(title)
-
-    @ classmethod
-    async def removeTitle(self, user: discord.Member, title):
-        await user.remove_roles(title)
-=======
     @classmethod
     async def add_title(cls, user: discord.Member, title_):
         await user.add_roles(title_)
@@ -518,9 +508,6 @@ class Title():
     @classmethod
     async def remove_title(cls, user: discord.Member, title_):
         await user.remove_roles(title_)
->>>>>>> a15814483555d69795d2735af564c2951c738d13
-
-
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기생성", description="끝말잇기방을 생성합니다.")
 async def _create(interaction: discord.Interaction, roomname: str):
     isroom = False
