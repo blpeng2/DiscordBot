@@ -21,14 +21,16 @@ COLOR = 0x33CCFF
 class Timer:
     @classmethod
     def calc(cls, time):
+        arr_time = []
         if time[-1] == "뒤":
             time = time[:-1].strip()
             arr_time = time.split()
             date = datetime.datetime.now()
         else:
-            date = datetime.datetime.today()
+            date = datetime.datetime.now()
             arr_time = time.split()
-            date.replace(second=0, minute=0, hour=0)
+            date -= datetime.timedelta(hours=date.hour, minutes=date.minute, seconds=date.second)
+            print(date)
         for __time in arr_time:
             if __time[-1] == "초":
                 date += datetime.timedelta(seconds=int(__time[:-1]))
@@ -36,8 +38,10 @@ class Timer:
                 date += datetime.timedelta(minutes=int(__time[:-1]))
             elif __time[-2:] == "시간":
                 date += datetime.timedelta(hours=int(__time[:-2]))
+                print(1)
             elif __time[-1:] == "시":
                 date += datetime.timedelta(hours=int(__time[:-1]))
+                print(2)
         date -= datetime.timedelta(hours=9)
         return date
 
@@ -300,8 +304,7 @@ class Bot(discord.Client):
             return
         user.add_exp(10)
 
-    @staticmethod
-    async def on_reminder(channel_id: int, author_id: int, text: str):
+    async def on_reminder(self, channel_id: int, author_id: int, text: str):
         channel = bot.get_channel(channel_id)
         user: discord.Member = channel.guild.get_member(author_id)
         now = datetime.datetime.now()
@@ -547,15 +550,17 @@ async def grammer(interaction: discord.Interaction, msg: str):
 
 
 def get_timestamp(date: datetime):
-    return f"{date.year}-{date.month}-{date.day} {date.hour+9}:{date.minute}:{date.second}"
+    return f"{date.year}-{date.month}-{date.day} {date.hour}:{date.minute}:{date.second}"
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
 async def remind(interaction: discord.Interaction, time: str, text: str):
     __time = Timer.calc(time)
+    print(__time)
     timers.Timer(bot, "reminder", __time, args=(
         interaction.channel.id, interaction.user.id, text)).start()
     embed = discord.Embed(color=COLOR)
+    __time += datetime.timedelta(hours=9)
     embed.add_field(
         name="✅ 알람설정 완료",
         value=f"설정된 시간: {get_timestamp(__time)}"
