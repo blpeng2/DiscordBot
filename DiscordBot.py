@@ -119,6 +119,7 @@ class StockUser:
         self.money = stock_user["money"]
         self.rank = stock_user["rank"]
         self.stocks = defaultdict(int, stock_user["stocks"])
+        print(self.stocks)
 
 
 class StockGame:
@@ -652,7 +653,10 @@ class StockBuyModal(StockTradeModal, title="주식 구매"):
         user = StockUser(interaction.user.name)
         stock_ = Stock(self.stock.value)
         StockGame.buy(user, stock_, int(self.cnt.value))
-        await interaction.followup.send("구매했습니다.")
+        embed = discord.Embed(title="구매 완료", color=COLOR)
+        embed.add_field(name="구입한 주식", value=self.stock.value)
+        embed.add_field(name="구입한 갯수", value=self.cnt.value)
+        await interaction.followup.send(embed=embed)
 
 
 class StockSellModal(StockTradeModal, title="주식 판매"):
@@ -661,7 +665,10 @@ class StockSellModal(StockTradeModal, title="주식 판매"):
         user = StockUser(interaction.user.name)
         stock_ = Stock(self.stock.value)
         StockGame.sell(user, stock_, int(self.cnt.value))
-        await interaction.followup.send("판매했습니다.")
+        embed = discord.Embed(title="판매 완료", color=COLOR)
+        embed.add_field(name="판매한 주식", value=self.stock.value)
+        embed.add_field(name="판매한 갯수", value=self.cnt.value)
+        await interaction.followup.send(embed=embed)
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="주식", description="주식관련 명령어를 실행합니다.")
@@ -680,16 +687,17 @@ async def stock(interaction: discord.Interaction, commands: app_commands.Choice[
             await interaction.response.send_modal(StockSellModal())
         case "현황":
             stocks = DB.get_stocks()
-            arr = []
+            embed = discord.Embed(title="주식 현황")
             for stock in stocks:
-                arr.append({
-                    "name": stock["stockName"],
-                    "price": stock["price"]
-                })
-            await interaction.response.send_message(arr)
+                embed.add_field(name=stock["stockName"], value=stock["price"])
+            await interaction.response.send_message(embed=embed)
         case "지갑":
             user = StockUser(interaction.user.name)
-            await interaction.response.send_message(user.money)
+            embed =discord.Embed(title=f"{interaction.user.name}님의 지갑", color=COLOR)
+            embed.add_field(name="money", value=user.money, inline=False)
+            for key, value in user.stocks.items():
+                embed.add_field(name=key, value=value, inline=False)
+            await interaction.response.send_message(embed=embed)
 
 
 class RoomCreateModal(discord.ui.Modal, title="방 생성"):
