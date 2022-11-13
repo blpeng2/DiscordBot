@@ -612,15 +612,19 @@ async def music(interaction: discord.Interaction, commands: app_commands.Choice[
         case "삭제":
             if bot.music.playlist:
                 return await interaction.response.send_message(view=MusicDelView())
-            return await interaction.response.send_message("플레이리스트에 노래가 없어요.")
+            embed = discord.Embed(title="플레이리스트", color=COLOR)
+            embed.add_field(name="🚫 ERROR", value="플레이리스트에 노래가 없어요.")
+            return await interaction.response.send_message(embed=embed)
         case "재생":
             await interaction.response.defer()
             await bot.music.connect(interaction.user.voice.channel)
             bot.music.play()
-            await interaction.followup.send("재생")
+            embed = discord.Embed(title="재생", color=COLOR)
+            await interaction.followup.send(embed=embed)
         case "일시정지":
             bot.music.pause()
-            await interaction.response.send_message("일시정지")
+            embed = discord.Embed(title="일시정지", color=COLOR)
+            await interaction.response.send_message(embed=embed)
         case "스킵":
             bot.music.stop()
             embed = discord.Embed(title="플레이리스트", description="노래를 스킵합니다.", color=COLOR)
@@ -697,7 +701,7 @@ class RoomCreateModal(discord.ui.Modal, title="방 생성"):
             if room.name == self.name.value:
                 # checkroom
                 isroom = True
-        if not isroom:
+        if not isroom and endtalk.get_room(interaction.user) is None:
             temp = Room(self.name.value)
             temp.user_list.append(interaction.user)
             rooms.append(temp)
@@ -705,7 +709,7 @@ class RoomCreateModal(discord.ui.Modal, title="방 생성"):
                 embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=COLOR))
         else:
             await interaction.response.send_message(
-                embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=COLOR))
+                embed=discord.Embed(title='끝말잇기 방이 이미 존재하거나 이미 참여했어요.', description=f"{interaction.user}님", color=COLOR))
 
 
 class RoomJoinSelect(discord.ui.Select):
@@ -714,22 +718,20 @@ class RoomJoinSelect(discord.ui.Select):
         super().__init__(options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        isroom = False
-        roomnumber = 0
+        room = endtalk.get_room(interaction.user)
+        if room:
+            embed = discord.Embed(title="끝말잇기", color=COLOR)
+            embed.add_field(name="🚫 ERROR", value=f"이미 {room.name}에 참가중 이에요.")
+            return await interaction.response.send_message(embed=embed)
+
         for room in rooms:
-            if room.name == self.values[0]:
-                isroom = True
+            if room.name == self.values[0][4:]:
                 roomnumber = rooms.index(room) - 1
-        if isroom:
-            temp = rooms.pop(roomnumber)
-            temp.user_list.append(interaction.user)
-            rooms.append(temp)
-            await interaction.response.send_message(
-                embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=COLOR))
-        else:
-            await interaction.response.send_message(
-                embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님",
-                                    color=COLOR))
+                temp = rooms.pop(roomnumber)
+                temp.user_list.append(interaction.user)
+                rooms.append(temp)
+                return await interaction.response.send_message(
+                    embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=COLOR))
 
 
 class RoomJoinView(discord.ui.View):
