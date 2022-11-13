@@ -267,8 +267,19 @@ class Bot(discord.Client):
             self.synced = True
         print(f"we have logged in as {self.user}.")
 
-    async def on_message(self, msg: discord.Message):
-        if msg.author == bot.user:
+    @staticmethod
+    async def on_member_join(member: discord.Member):
+        DB.create_status_user(member=member)
+        DB.create_stock_user(member=member)
+
+    @staticmethod
+    async def on_member_remove(member: discord.Member):
+        DB.remove_status_user(member=member)
+        DB.remove_stock_user(member=member)
+
+    @staticmethod
+    async def on_message(msg: discord.Message):
+        if msg.author.bot:
             return
         if ChatManager.checkAbuse(msg.content):
             await msg.channel.purge(limit=1)
@@ -289,19 +300,24 @@ class Bot(discord.Client):
         # DB에 유저가 없으면 user.userName = None 
         user = Status(msg.author.name)
         if user.userName: user.addExp(10)
-
-    async def on_reminder(self, channel_id, author_id, text):
+    @staticmethod
+    async def on_reminder(channel_id: int, author_id: int, text: str):
         channel = bot.get_channel(channel_id)
-        embed = discord.Embed(title="알람", color=0x33CCFF)
-        embed.add_field(name="<@{0}>님, 알람입니다.", value="{1}", )
-        await channel.send("<@{0}>님, 알람입니다: {1}".format(author_id, text))
+        user: discord.Member = channel.guild.get_member(author_id)
+        now = datetime.datetime.now()
+        embed = discord.Embed(color=COLOR)
+        embed.add_field(name=f"현재 시각", value=f"{get_timestamp(now)}",
+                        inline=False)
+        embed.add_field(name=f"메모 내용", value=f"{text}")
+        await channel.send(embed=embed, content=f"{user.mention}님 알람입니다.")
+
 
 
 bot = Bot()
 tree = app_commands.CommandTree(bot)
 
 
-class ChatManager():
+class ChatManager:
     @classmethod
     def checkGrammer(self, msg):
         return spell_checker.check(msg)
@@ -366,18 +382,18 @@ class DB():
         return db.find_one({"userName": userName})
 
     @classmethod
-    def updateUser(self, status):
+    def update_user(cls, status_: dict):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.replace_one(
             {
-                "userName": status["userName"]},
+                "userName": status_["userName"]},
             {
-                "userId": status["userId"],
-                "userName": status["userName"],
-                "exp": status["exp"],
-                "level": status["level"],
-                "rank": status["rank"]
+                "userId": status_["userId"],
+                "userName": status_["userName"],
+                "exp": status_["exp"],
+                "level": status_["level"],
+                "rank": status_["rank"]
             })
 
     @classmethod
@@ -407,7 +423,7 @@ class DB():
                     "rank": post["rank"]
                 })
 
-        users.sort(key=lambda user: user["exp"], reverse=True)
+        users.sort(key=lambda user_: user_["exp"], reverse=True)
         for rank, user in enumerate(users):
             user["rank"] = rank + 1
             db.replace_one({"userName": user["userName"]}, user)
@@ -428,7 +444,7 @@ class DB():
                     "stocks": post["stocks"]
                 })
 
-        users.sort(key=lambda user: user["money"], reverse=True)
+        users.sort(key=lambda user_: user_["money"], reverse=True)
         for rank, user in enumerate(users):
             user["rank"] = rank + 1
             db.replace_one({"userName": user["userName"]}, user)
@@ -486,6 +502,7 @@ class Title():
     def __init__(self) -> None:
         pass
 
+<<<<<<< HEAD
     @ classmethod
     async def addTitle(self, user: discord.Member, title):
         await user.add_roles(title)
@@ -493,6 +510,15 @@ class Title():
     @ classmethod
     async def removeTitle(self, user: discord.Member, title):
         await user.remove_roles(title)
+=======
+    @classmethod
+    async def add_title(cls, user: discord.Member, title_):
+        await user.add_roles(title_)
+
+    @classmethod
+    async def remove_title(cls, user: discord.Member, title_):
+        await user.remove_roles(title_)
+>>>>>>> a15814483555d69795d2735af564c2951c738d13
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기생성", description="끝말잇기방을 생성합니다.")
