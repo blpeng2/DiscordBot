@@ -1,13 +1,15 @@
-import discord
-from pymongo import MongoClient
-from discord import app_commands
-import youtube_dl
-from collections import deque, defaultdict
-import requests
-import os
-from dotenv import load_dotenv
 import datetime
+import os
+from collections import deque, defaultdict
+
+import discord
+import requests
+import youtube_dl
+from discord import app_commands
 from discord.ext import timers
+from dotenv import load_dotenv
+from pymongo import MongoClient
+
 from hanspell import spell_checker
 
 load_dotenv()
@@ -16,47 +18,36 @@ blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼
 COLOR = 0x33CCFF
 
 
-class Timer():
+class Timer:
     @classmethod
     def calc(cls, time):
         if time[-1] == "뒤":
             time = time[:-1].strip()
-            arrayOfTime = time.split()
+            arr_time = time.split()
             date = datetime.datetime.now()
-            for __time in arrayOfTime:
-                if __time[-1] == "초":
-                    date += datetime.timedelta(seconds=int(__time[:-1]))
-                elif __time[-1] == "분":
-                    date += datetime.timedelta(minutes=int(__time[:-1]))
-                elif __time[-2:] == "시간":
-                    date += datetime.timedelta(hours=int(__time[:-2]))
-                elif __time[-1:] == "시":
-                    date += datetime.timedelta(hours=int(__time[:-1]))
         else:
             date = datetime.datetime.today()
-            arrayOfTime = time.split()
+            arr_time = time.split()
             date.replace(second=0, minute=0, hour=0)
-            for __time in arrayOfTime:
-                if __time[-1] == "초":
-                    date += datetime.timedelta(seconds=int(__time[:-1]))
-                elif __time[-1] == "분":
-                    date += datetime.timedelta(minutes=int(__time[:-1]))
-                elif __time[-2:] == "시간":
-                    date += datetime.timedelta(hours=int(__time[:-2]))
-                elif __time[-1:] == "시":
-                    date += datetime.timedelta(hours=int(__time[:-1]))
+        for __time in arr_time:
+            if __time[-1] == "초":
+                date += datetime.timedelta(seconds=int(__time[:-1]))
+            elif __time[-1] == "분":
+                date += datetime.timedelta(minutes=int(__time[:-1]))
+            elif __time[-2:] == "시간":
+                date += datetime.timedelta(hours=int(__time[:-2]))
+            elif __time[-1:] == "시":
+                date += datetime.timedelta(hours=int(__time[:-1]))
         date -= datetime.timedelta(hours=9)
         return date
 
 
-class Music():
+class Music:
     def __init__(self) -> None:
         self.__voiceClient = None
         self.playlist = deque()
         self.is_playing = False
-
-    async def add(self, url):
-        YDL_OPTIONS = {
+        self.ydl_options = {
             'format': 'bestaudio/best',
             'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
             'restrictfilenames': True,
@@ -71,21 +62,25 @@ class Music():
             'force-ipv4': True,
             'cachedir': False
         }
-        FFMPEG_OPTIONS = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-        with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+        self.ffmpeg_options = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            'options': '-vn'
+        }
+
+    async def add(self, url):
+        with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
             info = ydl.extract_info(url, download=False)
             url2 = info['formats'][0]['url']
             self.playlist.append(
                 {
-                    "audio": await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS),
+                    "audio": await discord.FFmpegOpusAudio.from_probe(url2, **self.ffmpeg_options),
                     "name": info["title"],
                     "url": url
                 })
 
-    async def connect(self, voiceChannel):
+    async def connect(self, voice_channel):
         if self.__voiceClient is None:
-            self.__voiceClient: discord.VoiceClient = await voiceChannel.connect()
+            self.__voiceClient: discord.VoiceClient = await voice_channel.connect()
 
     def play(self):
         if self.__voiceClient.is_paused():
@@ -101,45 +96,45 @@ class Music():
         self.__voiceClient.stop()
 
 
-class Stock():
-    def __init__(self, stockName) -> None:
-        stock = DB.getStock(stockName)
+class Stock:
+    def __init__(self, stock_name) -> None:
+        stock = DB.get_stock(stock_name)
         self.stockName = stock["stockName"]
         self.price = stock["price"]
 
-    def getStock(self):
+    def get_stock(self):
         return {
             "stockName": self.stockName,
             "price": self.price
         }
 
 
-class StockUser():
-    def __init__(self, userName) -> None:
+class StockUser:
+    def __init__(self, username) -> None:
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
-        stockUser = db.find_one({"userName": userName})
-        self.userId = stockUser["userId"]
-        self.userName = stockUser["userName"]
-        self.money = stockUser["money"]
-        self.rank = stockUser["rank"]
-        self.stocks = defaultdict(int, stockUser["stocks"])
+        stock_user = db.find_one({"userName": username})
+        self.userId = stock_user["userId"]
+        self.userName = stock_user["userName"]
+        self.money = stock_user["money"]
+        self.rank = stock_user["rank"]
+        self.stocks = defaultdict(int, stock_user["stocks"])
 
 
-class StockGame():
+class StockGame:
     @classmethod
     def buy(cls, user: StockUser, stock: Stock):
-        stockUser = StockUser(user.userName)
-        stockUser.money -= stock.price
-        stockUser.stocks[stock.stockName] += 1
-        DB.updateStockUser(stockUser)
+        stock_user = StockUser(user.userName)
+        stock_user.money -= stock.price
+        stock_user.stocks[stock.stockName] += 1
+        DB.update_stock_user(stock_user)
 
     @classmethod
     def sell(cls, user: StockUser, stock: Stock):
-        stockUser = StockUser(user.userName)
-        stockUser.money += stock.price
-        stockUser.stocks[stock.stockName] -= 1
-        DB.updateStockUser(stockUser)
+        stock_user = StockUser(user.userName)
+        stock_user.money += stock.price
+        stock_user.stocks[stock.stockName] -= 1
+        DB.update_stock_user(stock_user)
 
 
 class Room:
@@ -268,12 +263,12 @@ class Bot(discord.Client):
         print(f"we have logged in as {self.user}.")
 
     async def on_member_join(self, member: discord.Member):
-        DB.createStatusUser(member=member)
-        DB.createStockUser(member=member)
+        DB.create_status_user(member=member)
+        DB.create_stock_user(member=member)
 
     async def on_member_remove(self, member: discord.Member):
-        DB.removeStatusUser(member=member)
-        DB.removeStockUser(member=member)
+        DB.remove_status_user(member=member)
+        DB.remove_stock_user(member=member)
 
     async def on_message(self, msg: discord.Message):
         if msg.author.bot:
@@ -291,7 +286,7 @@ class Bot(discord.Client):
                     embed.add_field(name="없는 단어입니다.")
                     return await msg.channel.send(embed=embed)
 
-        if ChatManager.checkAbuse(msg.content):
+        if ChatManager.check_abuse(msg.content):
             await msg.channel.purge(limit=1)
             embed = discord.Embed(title="욕설 금지", color=COLOR)
             embed.add_field(name=f"{msg.author}님", value="욕설을 사용하시면 안되죠")
@@ -299,7 +294,9 @@ class Bot(discord.Client):
             return
         # DB에 유저가 없으면 user.userName = None 
         user = Status(msg.author.name)
-        if user.userName: user.addExp(10)
+        if not user.userName:
+            return
+        user.add_exp(10)
 
     async def on_reminder(self, channel_id: int, author_id: int, text: str):
         channel = bot.get_channel(channel_id)
@@ -322,8 +319,8 @@ class ChatManager():
         return spell_checker.check(msg)
 
     @classmethod
-    def checkAbuse(cls, msg: str):
-        API_URL = os.getenv("NLP")
+    def check_abuse(cls, msg: str):
+        api_url = os.getenv("NLP")
         headers = {
             "Authorization": os.getenv("MACHINE")}
         payload = {
@@ -332,18 +329,18 @@ class ChatManager():
                 "wait_for_model": True
             }
         }
-        response = requests.post(API_URL, headers=headers, json=payload).json()
+        response = requests.post(api_url, headers=headers, json=payload).json()
         print(response)
         if response[0][0]["label"] == "hate":
             return True
         return False
 
 
-class Status():
-    def __init__(self, userName) -> None:
+class Status:
+    def __init__(self, username) -> None:
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
-        user = db.find_one({"userName": userName})
+        user = db.find_one({"userName": username})
         if user:
             self.userId = user["userId"]
             self.userName = user["userName"]
@@ -357,7 +354,7 @@ class Status():
             self.level = None
             self.rank = None
 
-    def getStatus(self):
+    def get_status(self):
         return {
             "userId": self.userId,
             "userName": self.userName,
@@ -366,23 +363,23 @@ class Status():
             "rank": self.rank
         }
 
-    def addExp(self, exp):
+    def add_exp(self, exp):
         self.exp += exp
-        DB.updateUser(self.getStatus())
+        DB.update_user(self.get_status())
 
-    def getUser(self):
-        return DB.getUser(self.userName)
+    def get_user(self):
+        return DB.get_user(self.userName)
 
 
 class DB:
     @classmethod
-    def getUser(cls, userName) -> dict | None:
+    def get_user(cls, username) -> dict | None:
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
-        return db.find_one({"userName": userName})
+        return db.find_one({"userName": username})
 
     @classmethod
-    def updateUser(cls, status):
+    def update_user(cls, status: dict):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.replace_one(
@@ -397,7 +394,7 @@ class DB:
             })
 
     @classmethod
-    def createStatusUser(cls, member: discord.Member):
+    def create_status_user(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.insert_one({
@@ -409,19 +406,19 @@ class DB:
         })
 
     @classmethod
-    def removeStatusUser(cls, member: discord.Member):
+    def remove_status_user(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         db.delete_one({"userId": member.id})
 
     @classmethod
-    def removeStockUser(cls, member: discord.Member):
+    def remove_stock_user(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.delete_one({"userId": member.id})
 
     @classmethod
-    def refreshExpRanking(cls):
+    def refresh_exp_ranking(cls):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["User"]
         users = []
@@ -442,7 +439,7 @@ class DB:
         return True
 
     @classmethod
-    def refreshStockUserRanking(cls):
+    def refresh_stock_user_ranking(cls):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         users = []
@@ -463,34 +460,34 @@ class DB:
         return True
 
     @classmethod
-    def updateStockUser(cls, stockUser: StockUser):
+    def update_stock_user(cls, stock_user: StockUser):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.replace_one(
             {
-                "userName": stockUser.userName},
+                "userName": stock_user.userName},
             {
-                "userId": stockUser.userId,
-                "userName": stockUser.userName,
-                "money": stockUser.money,
-                "rank": stockUser.rank,
-                "stocks": stockUser.stocks
+                "userId": stock_user.userId,
+                "userName": stock_user.userName,
+                "money": stock_user.money,
+                "rank": stock_user.rank,
+                "stocks": stock_user.stocks
             })
 
     @classmethod
-    def getStock(cls, stock: str):
+    def get_stock(cls, stock: str):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["Stock"]
         return db.find_one({"stockName": stock})
 
     @classmethod
-    def getStocks(cls):
+    def get_stocks(cls):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["Stock"]
         return db.find()
 
     @classmethod
-    def createStock(cls, post):
+    def create_stock(cls, post):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["Stock"]
         db.insert_one({
@@ -499,7 +496,7 @@ class DB:
         })
 
     @classmethod
-    def createStockUser(cls, member: discord.Member):
+    def create_stock_user(cls, member: discord.Member):
         client = MongoClient(os.getenv("MONGO"))
         db = client["Discord"]["StockUser"]
         db.insert_one({
@@ -516,11 +513,11 @@ class Title:
         pass
 
     @classmethod
-    async def addTitle(cls, user: discord.Member, title):
+    async def add_title(cls, user: discord.Member, title):
         await user.add_roles(title)
 
     @classmethod
-    async def removeTitle(cls, user: discord.Member, title):
+    async def remove_title(cls, user: discord.Member, title):
         await user.remove_roles(title)
 
 
@@ -603,12 +600,26 @@ async def _room_list(interaction: discord.Interaction):
 async def grammer(interaction: discord.Interaction, msg: str):
     msg = ChatManager.checkGrammer(msg)
     if msg.original != msg.checked:
-        await interaction.response.send_message(ephemeral=True, embed=discord.Embed(title='이렇게 바꾸는건 어떨까요 ?',
-                                                                                    description=f"{msg.original}\n  ➡{msg.checked}",
-                                                                                    color=0x00ff00))
+        await interaction.response.send_message(
+            ephemeral=True,
+            embed=discord.Embed(
+                title='이렇게 바꾸는건 어떨까요 ?',
+                description=f"{msg.original}\n  ➡{msg.checked}",
+                color=COLOR
+            )
+        )
     else:
-        await interaction.response.send_message(ephemeral=True,
-                                                embed=discord.Embed(title='문법적 오류가 없습니다 !', color=0x00ff00))
+        await interaction.response.send_message(
+            ephemeral=True,
+            embed=discord.Embed(
+                title='문법적 오류가 없습니다 !',
+                color=COLOR
+            )
+        )
+
+
+def get_timestamp(date: datetime):
+    return f"{date.year}-{date.month}-{date.day} {date.hour}:{date.minute}:{date.second}"
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
@@ -617,8 +628,10 @@ async def remind(interaction: discord.Interaction, time: str, text: str):
     timers.Timer(bot, "reminder", __time, args=(
         interaction.channel.id, interaction.user.id, text)).start()
     embed = discord.Embed(color=COLOR)
-    embed.add_field(name="✅ 알람설정 완료",
-                    value=f"설정된 시간: {__time.year}-{__time.month}-{__time.day} {__time.hour}:{__time.minute}:{__time.second}")
+    embed.add_field(
+        name="✅ 알람설정 완료",
+        value=f"설정된 시간: {get_timestamp(__time)}"
+    )
     await interaction.response.send_message(embed=embed)
 
 
@@ -644,8 +657,8 @@ class MusicDelSelect(discord.ui.Select):
             if self.values[0][4:] == song["name"]:
                 bot.music.playlist.remove(song)
                 embed = discord.Embed(title="플레이리스트", description="노래가 삭제되었어요.", color=COLOR)
-                for song in bot.music.playlist:
-                    embed.add_field(name=song["name"], value=song["url"], inline=False)
+                for _song in bot.music.playlist:
+                    embed.add_field(name=song["name"], value=_song["url"], inline=False)
                 return await interaction.response.send_message(embed=embed)
 
 
@@ -719,13 +732,13 @@ async def title(interaction: discord.Interaction, username: str, title_name: str
 
     # 칭호 제거
     if role in user.roles:
-        await Title.removeTitle(user, role)
+        await Title.remove_title(user, role)
         embed.add_field(name="✅ SUCCESS", value="칭호를 제거했어요.")
         embed.set_footer(text=f"제거된 유저: {username}, 제거한 칭호: {title_name}")
         await interaction.response.send_message(embed=embed)
     # 칭호 추가
     else:
-        await Title.addTitle(user, role)
+        await Title.add_title(user, role)
         embed.add_field(name="✅ SUCCESS", value="칭호를 추가했어요.")
         embed.set_footer(text=f"입력한 유저이름: {username}")
         embed.set_footer(text=f"추가된 유저: {username}, 추가한 칭호: {title_name}")
@@ -739,7 +752,7 @@ async def status(interaction: discord.Interaction, username: str):
     if not discord.utils.find(lambda m: m.name == username, interaction.guild.members):
         embed.add_field(name="🚫 ERROR", value="그런 사람은 존재하지 않아요.")
     else:
-        DB.refreshExpRanking()
+        DB.refresh_exp_ranking()
         user = Status(username)
         embed.add_field(name="name", value=user.userName, inline=False)
         embed.add_field(name="exp", value=user.exp, inline=False)
@@ -776,7 +789,7 @@ async def stock_wallet(interaction: discord.Interaction):
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="주식현황", description="주식현황")
 async def stock_stocks(interaction: discord.Interaction):
-    stocks = DB.getStocks()
+    stocks = DB.get_stocks()
     arr = []
     for stock in stocks:
         arr.append({
@@ -788,7 +801,7 @@ async def stock_stocks(interaction: discord.Interaction):
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="주식생성", description="주식생성")
 async def stock_create(interaction: discord.Interaction, stockname: str, price: int):
-    DB.createStock({
+    DB.create_stock({
         "stockName": stockname,
         "price": price
     })
