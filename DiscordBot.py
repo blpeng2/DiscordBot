@@ -153,19 +153,18 @@ class Room:
 rooms = []
 
 
-class EndTalk:
+class EndTalk():
 
     # string list에서 단어, 품사와 같은 요소들을 추출할때 사용됩니다
-    def midReturn(self, val, s, e):
+    def midReturn(val, s, e):
         if s in val:
-            val = val[val.find(s) + len(s):]
+            val = val[val.find(s)+len(s):]
             if e in val:
                 val = val[:val.find(e)]
         return val
-
     # string에서 XML 등의 요소를 분석할때 사용됩니다
 
-    def midReturn_all(self, val, s, e):
+    def midReturn_all(val, s, e):
         if s in val:
             tmp = val.split(s)
             val = []
@@ -175,7 +174,6 @@ class EndTalk:
         else:
             val = []
         return val
-
     def checkexists(self, query):
         url = 'https://krdict.korean.go.kr/api/search?key=' + apikey + '&part=word&sort=popular&num=100&pos=1&q=' + query
         response = requests.get(url, verify=False)
@@ -186,11 +184,11 @@ class EndTalk:
             pos = EndTalk.midReturn(w, '<pos>', '</pos>')
             if len(word) > 1 and pos == '명사' and word == query:
                 ans = w
-        if len(ans) > 0:
+        if len(ans)>0:
             return EndTalk.midReturn(ans, '<word>', '</word>')
         else:
             return ''
-
+            
     def checkword(self, query, room):
         result = endtalk.checkexists(query)
         if query[0] == endtalk.convert(room.last_word):
@@ -202,50 +200,48 @@ class EndTalk:
                 return "적어도 두 글자가 되어야 합니다"
             if result in room.history:
                 return "이미 사용한 단어입니다."
-            if result[len(result) - 1] in blacklist:
+            if result[len(result)-1] in blacklist:
                 return "아.. 좀 치사한데요.."
             if room.last_word != result[0] and room.last_word != "":
                 return f"{room.last_word}(으)로 시작하는 단어를 입력해 주십시오."
-            if room.user_list.index(room.last_user) == len(room.user_list):
+            if room.user_list.index(room.last_user) + 1 == len(room.user_list):
                 room.last_user = room.user_list[0]
             else:
-                room.last_user = room.user_list[room.user_list.index(room.last_user)]
+                room.last_user = room.user_list[room.user_list.index(room.last_user) + 1]
             room.history.append(query)
             room.last_word = result[-1]
             if room.last_word == '':
                 return f"{room.last_word}(으)로 시작하는 단어 {room.last_user}님 차례!"
             else:
                 return f"{room.last_user}님 차례!"
-        else:
-            return ''
+        else:      
+            return '' 
 
     def convert(self, rear):
-        convertList = {"라": "나", "락": "낙", "란": "난", "랄": "날",
-                       "람": "남", "랍": "납", "랏": "낫", "랑": "낭",
-                       "략": "약", "량": "양", "렁": "넝", "려": "여",
-                       "녀": "여", "력": "역", "녁": "역", "련": "연",
-                       "년": "연", "렬": "열", "렴": "염", "념": "염",
-                       "렵": "엽", "령": "영", "녕": "영", "로": "노",
-                       "록": "녹", "론": "논", "롤": "놀", "롬": "놈",
-                       "롭": "놉", "롯": "놋", "롱": "농", "료": "요",
-                       "뇨": "요", "룡": "용", "뇽": "용", "루": "누",
-                       "룩": "눅", "룬": "눈", "룰": "눌", "룸": "눔",
-                       "룻": "눗", "룽": "눙", "류": "유", "뉴": "유",
-                       "륙": "육", "률": "율", "르": "느", "륵": "늑",
-                       "른": "는", "를": "늘", "름": "늠", "릅": "늡",
-                       "릇": "늣", "릉": "능", "래": "내", "랙": "낵",
-                       "랜": "낸", "랠": "낼", "램": "냄", "랩": "냅",
-                       "랫": "냇", "랭": "냉", "례": "예", "뢰": "뇌",
-                       "리": "이", "니": "이", "린": "인", "닌": "인",
-                       "릴": "일", "닐": "일", "림": "임", "님": "임",
-                       "립": "입", "닙": "입", "릿": "잇", "닛": "잇",
-                       "링": "잉", "닝": "잉"}
+        convertList = {"라":"나","락":"낙","란":"난","랄":"날",
+        "람":"남","랍":"납","랏":"낫","랑":"낭",
+        "략":"약","량":"양","렁":"넝","려":"여",
+        "녀":"여","력":"역","녁":"역","련":"연",
+        "년":"연","렬":"열","렴":"염","념":"염",
+        "렵":"엽","령":"영","녕":"영","로":"노",
+        "록":"녹","론":"논","롤":"놀","롬":"놈",
+        "롭":"놉","롯":"놋","롱":"농","료":"요",
+        "뇨":"요","룡":"용","뇽":"용","루":"누",
+        "룩":"눅","룬":"눈","룰":"눌","룸":"눔",
+        "룻":"눗","룽":"눙","류":"유","뉴":"유",
+        "륙":"육","률":"율","르":"느","륵":"늑",
+        "른":"는","를":"늘","름":"늠","릅":"늡",
+        "릇":"늣","릉":"능","래":"내","랙":"낵",
+        "랜":"낸","랠":"낼","램":"냄","랩":"냅",
+        "랫":"냇","랭":"냉","례":"예","뢰":"뇌",
+        "리":"이","니":"이","린":"인","닌":"인",
+        "릴":"일","닐":"일","림":"임","님":"임",
+        "립":"입","닙":"입","릿":"잇","닛":"잇",
+        "링":"잉","닝":"잉"}
 
         if rear in convertList:
             return convertList[rear]
         return rear
-
-
 endtalk = EndTalk()
 
 
@@ -273,19 +269,16 @@ class Bot(discord.Client):
     async def on_message(self, msg: discord.Message):
         if msg.author.bot:
             return
-
         for room in rooms:
             if room.is_playing and (msg.author == room.last_user):
                 result = endtalk.checkword(msg.content, room)
                 embed = discord.Embed(title="끝말잇기", color=COLOR)
                 if result != '':
-                    embed.add_field(name=f"{room.history[len(room.history) - 2]} > {room.history[-1]}", value=result,
-                                    inline=False)
+                    embed.add_field(name=f"{room.history[len(room.history) - 2]} > {room.history[-1]}", value=result, inline=False)
                     await msg.channel.send(embed=embed)
                 else:
-                    embed.add_field(name="없는 단어입니다.")
-                    return await msg.channel.send(embed=embed)
-
+                    embed.add_field(name="없는 단어입니다.", value=f"{msg.author}님 다시 입력해주세요")
+                    await msg.channel.send(embed=embed)
         if ChatManager.check_abuse(msg.content):
             await msg.channel.purge(limit=1)
             embed = discord.Embed(title="욕설 금지", color=COLOR)
@@ -533,11 +526,9 @@ async def _create(interaction: discord.Interaction, roomname: str):
         temp = Room(roomname)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(
-            embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=COLOR))
     else:
-        await interaction.response.send_message(
-            embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=COLOR))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기참가", description="끝말잇기방에 참가합니다.")
@@ -552,11 +543,9 @@ async def _join(interaction: discord.Interaction, roomname: str):
         temp = rooms.pop(roomnumber)
         temp.user_list.append(interaction.user)
         rooms.append(temp)
-        await interaction.response.send_message(
-            embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=COLOR))
     else:
-        await interaction.response.send_message(
-            embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=0x33CCFF))
+        await interaction.response.send_message(embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=COLOR))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기시작", description="입력된 방의 끝말잇기게임를 시작합니다.")
@@ -564,14 +553,12 @@ async def _start(interaction: discord.Interaction, roomname: str):
     isroom = False
     for room in rooms:
         if room.name == roomname:
-            isroom = True
+            isroom == True
             room.is_playing = True
             room.last_user = room.user_list[0]
-            await interaction.response.send_message(
-                embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=0x33CCFF))
+            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=COLOR))
             return
-        await interaction.response.send_message(
-            embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=0x33CCFF))
+        await interaction.response.send_message(embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=COLOR))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기종료", description="입력된 방의 끝말잇기게임를 종료합니다.")
@@ -579,12 +566,11 @@ async def _end(interaction: discord.Interaction, roomname: str):
     isroom = False
     for room in rooms:
         if room.name == roomname:
-            isroom = True
+            isroom == True
             room.is_playing = False
-            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=0x33CCFF))
+            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=COLOR))
             return
-        await interaction.response.send_message(
-            embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=0x33CCFF))
+        await interaction.response.send_message(embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=COLOR))
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
@@ -593,9 +579,7 @@ async def _room_list(interaction: discord.Interaction):
     for room in rooms:
         roomnamelist.append(room.name)
         roomnamelist.append(room.user_list)
-    await interaction.response.send_message(
-        embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=0x33CCFF))
-
+    await interaction.response.send_message(embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=COLOR))
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
 async def grammer(interaction: discord.Interaction, msg: str):
