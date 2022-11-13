@@ -547,7 +547,7 @@ async def grammer(interaction: discord.Interaction, msg: str):
 
 
 def get_timestamp(date: datetime):
-    return f"{date.year}-{date.month}-{date.day} {date.hour}:{date.minute}:{date.second}"
+    return f"{date.year}-{date.month}-{date.day} {date.hour+9}:{date.minute}:{date.second}"
 
 
 @tree.command(guild=discord.Object(id=1038138701961769021), name="알람", description="알람을 설정합니다.")
@@ -693,7 +693,7 @@ async def stock(interaction: discord.Interaction, commands: app_commands.Choice[
             await interaction.response.send_message(embed=embed)
         case "지갑":
             user = StockUser(interaction.user.name)
-            embed =discord.Embed(title=f"{interaction.user.name}님의 지갑", color=COLOR)
+            embed = discord.Embed(title=f"{interaction.user.name}님의 지갑", color=COLOR)
             embed.add_field(name="money", value=user.money, inline=False)
             for key, value in user.stocks.items():
                 embed.add_field(name=key, value=value, inline=False)
