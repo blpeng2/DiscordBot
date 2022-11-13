@@ -123,17 +123,17 @@ class StockUser:
 
 class StockGame:
     @classmethod
-    def buy(cls, user: StockUser, stock: Stock):
+    def buy(cls, user: StockUser, stock: Stock, cnt: int):
         stock_user = StockUser(user.userName)
-        stock_user.money -= stock.price
-        stock_user.stocks[stock.stockName] += 1
+        stock_user.money -= stock.price * cnt
+        stock_user.stocks[stock.stockName] += cnt
         DB.update_stock_user(stock_user)
 
     @classmethod
-    def sell(cls, user: StockUser, stock: Stock):
+    def sell(cls, user: StockUser, stock: Stock, cnt: int):
         stock_user = StockUser(user.userName)
-        stock_user.money += stock.price
-        stock_user.stocks[stock.stockName] -= 1
+        stock_user.money += stock.price * cnt
+        stock_user.stocks[stock.stockName] -= cnt
         DB.update_stock_user(stock_user)
 
 
@@ -146,14 +146,17 @@ class Room:
         self.history = []
         self.last_user = name
 
-    def __call__(self):
-        return self.user_list
+
+rooms: [Room] = []
 
 
-rooms = []
-
-
-class EndTalk():
+class EndTalk:
+    @staticmethod
+    def get_room(member: discord.Member) -> Room | None:
+        for room in rooms:
+            if member in room.user_list:
+                return room
+        return None
 
     # string list에서 단어, 품사와 같은 요소들을 추출할때 사용됩니다
     def midReturn(self, val, s, e):
@@ -520,81 +523,6 @@ class Title:
         await user.remove_roles(title_)
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기생성", description="끝말잇기방을 생성합니다.")
-async def _create(interaction: discord.Interaction, roomname: str):
-    isroom = False
-    for room in rooms:
-        if room.name == roomname:
-            # checkroom
-            isroom = True
-    if not isroom:
-        temp = Room(roomname)
-        temp.user_list.append(interaction.user)
-        rooms.append(temp)
-        await interaction.response.send_message(
-            embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=COLOR))
-    else:
-        await interaction.response.send_message(
-            embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=COLOR))
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기참가", description="끝말잇기방에 참가합니다.")
-async def _join(interaction: discord.Interaction, roomname: str):
-    isroom = False
-    roomnumber = 0
-    for room in rooms:
-        if room.name == roomname:
-            isroom = True
-            roomnumber = rooms.index(room) - 1
-    if isroom:
-        temp = rooms.pop(roomnumber)
-        temp.user_list.append(interaction.user)
-        rooms.append(temp)
-        await interaction.response.send_message(
-            embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=COLOR))
-    else:
-        await interaction.response.send_message(
-            embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님", color=COLOR))
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기시작", description="입력된 방의 끝말잇기게임를 시작합니다.")
-async def _start(interaction: discord.Interaction, roomname: str):
-    isroom = False
-    for room in rooms:
-        if room.name == roomname:
-            isroom = True
-            room.is_playing = True
-            room.last_user = room.user_list[0]
-            await interaction.response.send_message(
-                embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요", color=COLOR))
-            return
-        await interaction.response.send_message(
-            embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=COLOR))
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기종료", description="입력된 방의 끝말잇기게임를 종료합니다.")
-async def _end(interaction: discord.Interaction, roomname: str):
-    isroom = False
-    for room in rooms:
-        if room.name == roomname:
-            isroom = True
-            room.is_playing = False
-            await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=COLOR))
-            return
-        await interaction.response.send_message(
-            embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=COLOR))
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기방", description="생성된 끝말잇기방을 확인합니다.")
-async def _room_list(interaction: discord.Interaction):
-    roomnamelist = []
-    for room in rooms:
-        roomnamelist.append(room.name)
-        roomnamelist.append(room.user_list)
-    await interaction.response.send_message(
-        embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=COLOR))
-
-
 @tree.command(guild=discord.Object(id=1038138701961769021), name="맞춤법", description="입력된 문장의 맞춤법을 검사합니다.")
 async def grammer(interaction: discord.Interaction, msg: str):
     msg = ChatManager.checkGrammer(msg)
@@ -706,6 +634,153 @@ async def music(interaction: discord.Interaction, commands: app_commands.Choice[
             await interaction.response.send_message(embed=embed)
 
 
+class StockTradeModal(discord.ui.Modal):
+    stock = discord.ui.TextInput(label="주식")
+    cnt = discord.ui.TextInput(label="갯수")
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        pass
+
+
+class StockBuyModal(StockTradeModal, title="주식 구매"):
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+        user = StockUser(interaction.user.name)
+        stock_ = Stock(self.stock.value)
+        StockGame.buy(user, stock_, int(self.cnt.value))
+        await interaction.followup.send("구매했습니다.")
+
+
+class StockSellModal(StockTradeModal, title="주식 판매"):
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+        user = StockUser(interaction.user.name)
+        stock_ = Stock(self.stock.value)
+        StockGame.sell(user, stock_, int(self.cnt.value))
+        await interaction.followup.send("판매했습니다.")
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="주식", description="주식관련 명령어를 실행합니다.")
+@app_commands.describe(commands="명령어")
+@app_commands.choices(commands=[
+    app_commands.Choice(name="구매", value=1),
+    app_commands.Choice(name="판매", value=2),
+    app_commands.Choice(name="현황", value=3),
+    app_commands.Choice(name="지갑", value=4)
+])
+async def stock(interaction: discord.Interaction, commands: app_commands.Choice[int]):
+    match commands.name:
+        case "구매":
+            await interaction.response.send_modal(StockBuyModal())
+        case "판매":
+            await interaction.response.send_modal(StockSellModal())
+        case "현황":
+            stocks = DB.get_stocks()
+            arr = []
+            for stock in stocks:
+                arr.append({
+                    "name": stock["stockName"],
+                    "price": stock["price"]
+                })
+            await interaction.response.send_message(arr)
+        case "지갑":
+            user = StockUser(interaction.user.name)
+            await interaction.response.send_message(user.money)
+
+
+class RoomCreateModal(discord.ui.Modal, title="방 생성"):
+    name = discord.ui.TextInput(label="방 이름")
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        isroom = False
+        for room in rooms:
+            if room.name == self.name.value:
+                # checkroom
+                isroom = True
+        if not isroom:
+            temp = Room(self.name.value)
+            temp.user_list.append(interaction.user)
+            rooms.append(temp)
+            await interaction.response.send_message(
+                embed=discord.Embed(title='끝말잇기 방 생성 완료', description=f"{interaction.user}님", color=COLOR))
+        else:
+            await interaction.response.send_message(
+                embed=discord.Embed(title='끝말잇기 방이 이미 있습니다.', description=f"{interaction.user}님", color=COLOR))
+
+
+class RoomJoinSelect(discord.ui.Select):
+    def __init__(self) -> None:
+        options = [discord.SelectOption(label=f"#{idx}. {room.name}") for idx, room in enumerate(rooms)]
+        super().__init__(options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        isroom = False
+        roomnumber = 0
+        for room in rooms:
+            if room.name == self.values[0]:
+                isroom = True
+                roomnumber = rooms.index(room) - 1
+        if isroom:
+            temp = rooms.pop(roomnumber)
+            temp.user_list.append(interaction.user)
+            rooms.append(temp)
+            await interaction.response.send_message(
+                embed=discord.Embed(title='끝말잇기 참가 완료', description=f"{interaction.user}님", color=COLOR))
+        else:
+            await interaction.response.send_message(
+                embed=discord.Embed(title='이미 참가했거나 찾는 끝말잇기 방이 없습니다', description=f"{interaction.user}님",
+                                    color=COLOR))
+
+
+class RoomJoinView(discord.ui.View):
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+        self.add_item(RoomJoinSelect())
+
+
+@tree.command(guild=discord.Object(id=1038138701961769021), name="끝말잇기", description="끝말잇기관련 명령어를 실행합니다.")
+@app_commands.describe(commands="명령어")
+@app_commands.choices(commands=[
+    app_commands.Choice(name="방 생성", value=1),
+    app_commands.Choice(name="방 참가", value=2),
+    app_commands.Choice(name="방 목록", value=3),
+    app_commands.Choice(name="시작", value=4),
+    app_commands.Choice(name="종료", value=5)
+])
+async def end_game(interaction: discord.Interaction, commands: app_commands.Choice[int]):
+    match commands.name:
+        case "방 생성":
+            print(rooms)
+            await interaction.response.send_modal(RoomCreateModal())
+        case "방 참가":
+            await interaction.response.send_message(view=RoomJoinView())
+        case "방 목록":
+            roomnamelist = []
+            for room in rooms:
+                roomnamelist.append(room.name)
+                roomnamelist.append(room.user_list)
+            await interaction.response.send_message(
+                embed=discord.Embed(title="방 목록입니다.", description=f"{roomnamelist}", color=COLOR))
+        case "시작":
+            room = endtalk.get_room(interaction.user)
+            if room:
+                room.is_playing = True
+                room.last_user = room.user_list[0]
+                return await interaction.response.send_message(
+                    embed=discord.Embed(title="끝말잇기 시작", description=f"{room.user_list[0]}님부터 시작해 주세요",
+                                        color=COLOR))
+            await interaction.response.send_message(
+                embed=discord.Embed(title="시작하지 못해요 ...", description="참가 먼저 해주세요", color=COLOR))
+        case "종료":
+            room = endtalk.get_room(interaction.user)
+            if room:
+                room.is_playing = False
+                rooms.remove(room)
+                return await interaction.response.send_message(embed=discord.Embed(title="끝말잇기 종료", color=COLOR))
+            await interaction.response.send_message(
+                embed=discord.Embed(title="종료하지 못해요 ...", description="종료할 방이 없거나 시작 먼저 해주세요", color=COLOR))
+
+
 @tree.command(guild=discord.Object(id=1038138701961769021), name="칭호", description="칭호를 추가하거나 제거합니다.")
 async def title(interaction: discord.Interaction, username: str, title_name: str):
     role = discord.utils.find(
@@ -764,56 +839,21 @@ async def status(interaction: discord.Interaction, username: str):
 #     DB.createStatusUser(interaction)
 #     await interaction.response.send_message("생성되었습니다.")
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="구매", description="구매")
-async def stock_buy(interaction: discord.Interaction, stockname: str):
-    await interaction.response.defer()
-    user = StockUser(interaction.user.name)
-    stock = Stock(stockname)
-    StockGame.buy(user, stock)
-    interaction.followup.send("구매했습니다.")
+
+# @tree.command(guild=discord.Object(id=1038138701961769021), name="주식생성", description="주식생성")
+# async def stock_create(interaction: discord.Interaction, stockname: str, price: int):
+#     DB.create_stock({
+#         "stockName": stockname,
+#         "price": price
+#     })
+#     await interaction.response.send_message("생성되었습니다.")
 
 
-@tree.command(guild=discord.Object(id=1038138701961769021), name="판매", description="판매")
-async def stock_sell(interaction: discord.Interaction, stockname: str):
-    await interaction.response.defer()
-    user = StockUser(interaction.user.name)
-    stock = Stock(stockname)
-    StockGame.sell(user, stock)
-    await interaction.followup.send("판매했습니다.")
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="지갑", description="지갑")
-async def stock_wallet(interaction: discord.Interaction):
-    user = StockUser(interaction.user.name)
-    await interaction.response.send_message(user.money)
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="주식현황", description="주식현황")
-async def stock_stocks(interaction: discord.Interaction):
-    stocks = DB.get_stocks()
-    arr = []
-    for stock in stocks:
-        arr.append({
-            "name": stock["stockName"],
-            "price": stock["price"]
-        })
-    await interaction.response.send_message(arr)
-
-
-@tree.command(guild=discord.Object(id=1038138701961769021), name="주식생성", description="주식생성")
-async def stock_create(interaction: discord.Interaction, stockname: str, price: int):
-    DB.create_stock({
-        "stockName": stockname,
-        "price": price
-    })
-    await interaction.response.send_message("생성되었습니다.")
-
-
-@ tree.command(guild=discord.Object(id=1038138701961769021), name="주식유저생성", description="주식유저생성")
-async def stock_user_create(interaction: discord.Interaction, username: str):
-    member: discord.Member = discord.utils.find(
-        lambda m: m.name == username, interaction.guild.members)
-    DB.create_stock_user(member=member)
-    await interaction.response.send_message("생성 완료")
+# @ tree.command(guild=discord.Object(id=1038138701961769021), name="주식유저생성", description="주식유저생성")
+# async def stock_user_create(interaction: discord.Interaction, username: str):
+#     member: discord.Member = discord.utils.find(
+#         lambda m: m.name == username, interaction.guild.members)
+#     DB.create_stock_user(member=member)
+#     await interaction.response.send_message("생성 완료")
 
 bot.run(os.environ["BOT"])
