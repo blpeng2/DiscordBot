@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 
 from hanspell import spell_checker
-# ..
 load_dotenv()
 apikey = os.getenv('APIKEY')
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
@@ -332,7 +331,7 @@ class ChatManager():
         }
         response = requests.post(api_url, headers=headers, json=payload).json()
         print(response)
-        if response[0][0]["label"] == "hate":
+        if response[0][0]["label"] == "hate" and response[0][0]["score"] >= 0.7:
             return True
         return False
 
