@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 
 from hanspell import spell_checker
-
+# ..
 load_dotenv()
 apikey = os.getenv('APIKEY')
 blacklist = ['즘', '틱', '늄', '슘', '퓸', '늬', '뺌', '섯', '숍', '튼', '름', '늠', '쁨']
