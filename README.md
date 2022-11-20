@@ -1,4 +1,4 @@
-<p align="center"><img src="https://github.com/qor0530/README/blob/main/GNU.png"></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/60594585/202889133-cd6e35f6-ff14-4616-969e-84db4ff9419f.png"></p>
 <h1 align="center">
   <br>
   GNU BOT
